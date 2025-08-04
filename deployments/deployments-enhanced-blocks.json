@@ -1,0 +1,29 @@
+{
+  "network": "bsctestnet",
+  "chainId": 97,
+  "deployer": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+  "timestamp": "2025-07-09T01:18:09.539Z",
+  "version": "enhanced-blocks-with-dex-tax",
+  "contracts": {
+    "BLOCKS": "0x49acA788F1e8B0Db6AEeE1bbb1dc72848dbCf6ee",
+    "BLOCKS-LP": "0x4085B6E3Ea9B585c961d4024fE2d299613236b89",
+    "VestingVault": "0x66041c8Bd7837b08B10325d0B2911634ff849bb2",
+    "SwapTaxManager": "0x2cC4C98Bb006EdB3323F323Ab380BAfDaE09C48E",
+    "PackageManagerV2_1": "0x3FCe59bEd215B5762fB6595c468Fd8f4aEa8AC66",
+    "Treasury": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4"
+  },
+  "admins": {
+    "primary": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+    "additional": "0x6F6782148F208F9547f68e2354B1d7d2d4BeF987"
+  },
+  "externalContracts": {
+    "USDT": "0x350eBe9e8030B5C2e70f831b82b92E44569736fF",
+    "PancakeRouter": "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
+    "PancakeFactory": "0x6725F303b657a9451d8BA641348b6761A6CC7a17"
+  },
+  "taxConfiguration": {
+    "buyTaxKey": "0x8e9b148654316179bd45e9ec5f0b575ae8288e79df16d7be748ec9a9bdca8b4c",
+    "sellTaxKey": "0x46e2aa85b4ea4837644e46fe22acb44743da12e349006c0093a61f6bf0967602",
+    "swapTaxManager": "0x2cC4C98Bb006EdB3323F323Ab380BAfDaE09C48E"
+  }
+}
