@@ -1,0 +1,51 @@
+{
+  "network": "bsctestnet",
+  "chainId": 97,
+  "deployer": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+  "timestamp": "2025-07-14T14:54:24.494Z",
+  "version": "referral-calculation-fix",
+  "features": [
+    "Enhanced automatic liquidity addition with slippage protection",
+    "Comprehensive error handling with try-catch blocks",
+    "New events for liquidity addition transparency",
+    "Fallback mechanism for failed liquidity additions",
+    "Configurable slippage tolerance (default 5%)",
+    "Liquidity verification checks",
+    "Fixed referral calculation bug (5% instead of 5.26%)",
+    "Referral rewards calculated on totalUserTokens instead of totalTokens"
+  ],
+  "contracts": {
+    "BLOCKS": "0x739D13ac638974DcDc92233cf7B1aa08ffF7728f",
+    "BLOCKS_LP": "0xaC05CA16038a21c8e6a20E6428B3E30B7FdD9436",
+    "VestingVault": "0x084c34dc7eBC1c4c10D4B116e222D02A4c1286DA",
+    "SwapTaxManager": "0xbCE77b95a011e114a8b003e7f211ddf9c3eF381f",
+    "USDT": "0x350eBe9e8030B5C2e70f831b82b92E44569736fF",
+    "PancakeRouter": "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
+    "PancakeFactory": "0x6725F303b657a9451d8BA641348b6761A6CC7a17",
+    "Treasury": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+    "PackageManagerV2_1": "0xa1a274557FE7dC408d5E9ADCf48EB3CB2bbe5358",
+    "PackageManagerV2_1_Previous": "0xB0E52DBE2a980815d5622624130199BF511C34B6"
+  },
+  "admins": {
+    "primary": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+    "additional": "0x6F6782148F208F9547f68e2354B1d7d2d4BeF987"
+  },
+  "constructorArgs": [
+    "0x350eBe9e8030B5C2e70f831b82b92E44569736fF",
+    "0x739D13ac638974DcDc92233cf7B1aa08ffF7728f",
+    "0xaC05CA16038a21c8e6a20E6428B3E30B7FdD9436",
+    "0x084c34dc7eBC1c4c10D4B116e222D02A4c1286DA",
+    "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
+    "0x6725F303b657a9451d8BA641348b6761A6CC7a17",
+    "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+    "0xbCE77b95a011e114a8b003e7f211ddf9c3eF381f",
+    "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+    "2000000000000000000"
+  ],
+  "referralFix": {
+    "timestamp": "2025-07-14T14:54:24.494Z",
+    "issue": "Referral calculation was using totalTokens (including 5% treasury) instead of totalUserTokens",
+    "fix": "Changed line 621: referralReward = (totalUserTokens * pkg.referralBps) / 10_000",
+    "expectedBehavior": "5% referral rate now calculates exactly 5% instead of 5.26%"
+  }
+}

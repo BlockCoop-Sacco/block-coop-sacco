@@ -1,0 +1,27 @@
+{
+  "name": "BlockCoop Sacco - DeFi Investment Platform",
+  "short_name": "BlockCoop",
+  "description": "Sophisticated investment packages with advanced splitting mechanisms, vesting schedules, and secondary market integration on BSC.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/Blockcooplogo.png",
+      "sizes": "500x500",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Blockcooplogo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/Blockcooplogo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

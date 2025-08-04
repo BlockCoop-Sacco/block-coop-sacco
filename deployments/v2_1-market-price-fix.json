@@ -1,0 +1,23 @@
+{
+  "network": "bsctestnet",
+  "timestamp": "2025-08-04T18:46:04.309Z",
+  "deployer": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+  "contracts": {
+    "oldPackageManager": "0xF7075036dBd8d393B4DcF63071C3eF4abD8f31b9",
+    "newPackageManager": "0x9a5AF2Ed5ffC55C3D22d35CB2D67E8B8E873e591",
+    "usdt": "0x52f8BE86c4157eF5F11f3d73135ec4a568B02b90",
+    "share": "0x1d1669EF234081330a78Da546F1aE744e85b551F",
+    "lp": "0x9D08A478B90F84f0dF6867E0B210547E9311724F",
+    "vault": "0x21CE67C04b799183c1A88342947AD6D3b4f32430",
+    "router": "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
+    "factory": "0x6725F303b657a9451d8BA641348b6761A6CC7a17",
+    "treasury": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+    "tax": "0x8188E20075Fd048b7850436eDf624b7169c53237"
+  },
+  "features": {
+    "marketPriceDetection": true,
+    "dynamicLiquidityPricing": true,
+    "backwardCompatibility": true,
+    "productionReady": true
+  }
+}

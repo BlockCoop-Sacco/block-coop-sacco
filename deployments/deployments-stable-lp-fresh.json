@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-07-10T19:00:29.862Z",
+  "network": "bsctestnet",
+  "deployer": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+  "contracts": {
+    "PackageManagerV2_1": "0x4F86B93C8f023f7c112A625153cbd718c3860760",
+    "BLOCKS": "0xCff8B55324b7c66BD04D66F3AFBFA5A20874c424",
+    "BLOCKS_LP": "0x70C74268f8b22C0c7702b497131ca8025947F0d5",
+    "VestingVault": "0xD79FdE9849a59b1f963A186E569bdBc7814b3d7c",
+    "SwapTaxManager": "0x4d757367e604DbE16116C0aa2F1f20765A415864",
+    "USDT": "0x350eBe9e8030B5C2e70f831b82b92E44569736fF",
+    "PancakeRouter": "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
+    "Treasury": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4"
+  },
+  "gasUsed": {
+    "BLOCKS": "1108268",
+    "BLOCKS_LP": "837422",
+    "VestingVault": "635612",
+    "SwapTaxManager": "430310",
+    "PackageManagerV2_1": "3664950"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "network": "bsctestnet",
+  "chainId": 97,
+  "deployer": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+  "timestamp": "2025-07-29T16:20:13.685Z",
+  "version": "staking-v2",
+  "contracts": {
+    "BLOCKSStakingV2": "0x554a9631E00103cC97282D0BC27Ba0A9a4ab4A5E"
+  },
+  "dependencies": {
+    "BLOCKS": "0x715b2A06Ac3AB8506f8fF44Fa67C3D2ec3425706",
+    "USDT": "0x52f8BE86c4157eF5F11f3d73135ec4a568B02b90"
+  },
+  "admins": {
+    "primary": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+    "additional": "0x6F6782148F208F9547f68e2354B1d7d2d4BeF987"
+  },
+  "features": [
+    "Multiple staking pools with different lock periods",
+    "Flexible staking (0 lock) and locked staking (30d, 90d, 1y)",
+    "USDT reward distribution",
+    "Emergency unstaking with penalties",
+    "Role-based access control",
+    "Pausable functionality"
+  ],
+  "defaultPools": [
+    {
+      "id": 0,
+      "name": "Flexible Staking",
+      "lockPeriod": "0 days",
+      "apy": "8%",
+      "penalty": "0%"
+    },
+    {
+      "id": 1,
+      "name": "30-Day Lock",
+      "lockPeriod": "30 days",
+      "apy": "12%",
+      "penalty": "5%"
+    },
+    {
+      "id": 2,
+      "name": "90-Day Lock",
+      "lockPeriod": "90 days",
+      "apy": "18%",
+      "penalty": "10%"
+    },
+    {
+      "id": 3,
+      "name": "1-Year Lock",
+      "lockPeriod": "365 days",
+      "apy": "25%",
+      "penalty": "20%"
+    }
+  ]
+}

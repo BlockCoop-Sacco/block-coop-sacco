@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-07-10T23:36:50.263Z",
+  "network": "bsctestnet",
+  "contracts": {
+    "PackageManagerV2_1": {
+      "address": "0xb1995f8C4Cf5409814d191e444e6433f5B6c712b",
+      "verified": true,
+      "constructorArgs": [
+        "0x350eBe9e8030B5C2e70f831b82b92E44569736fF",
+        "0xCff8B55324b7c66BD04D66F3AFBFA5A20874c424",
+        "0x70C74268f8b22C0c7702b497131ca8025947F0d5",
+        "0xD79FdE9849a59b1f963A186E569bdBc7814b3d7c",
+        "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
+        "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73",
+        "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+        "0x4d757367e604DbE16116C0aa2F1f20765A415864",
+        "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+        "2000000000000000000"
+      ]
+    }
+  },
+  "fix": "Portfolio metrics inflation bug - treasury allocation excluded from user stats"
+}
