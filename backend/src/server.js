@@ -1,103 +1,121 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+import './config/env.js';
 
 // Import routes
 import mpesaRoutes from './routes/mpesa.js';
-import bridgeRoutes from './routes/bridge.js';
-// import recoveryRoutes from './routes/recovery.js';
-
-// Import services
-// import recoveryService from './services/recoveryService.js';
+import healthRoutes from './routes/health.js';
 
 // Import middleware
-import { createRateLimit } from './middleware/auth.js';
-import logger from './config/logger.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { authMiddleware } from './middleware/auth.js';
+import { logger } from './utils/logger.js';
 
-// Initialize database
-import './config/database.js';
+// Import database
+import { initializeDatabase } from './database/init.js';
+
+// Import services
+import recoveryService from './services/recoveryService.js';
 
 // Load environment variables
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+// dotenv is loaded in ./config/env.js
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+app.use(helmet());
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://shares.blockcoopsacco.com"
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
     },
-  },
-}));
+    credentials: true
+  })
+);
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
-}));
 
-// Compression middleware
-app.use(compression());
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
+});
+
+const paymentLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 3, // limit each IP to 3 payment requests per minute
+  message: 'Too many payment requests, please try again later.'
+});
+
+app.use('/api', generalLimiter);
+app.use('/api/mpesa/initiate-payment', paymentLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
-app.use(morgan('combined', {
-  stream: {
-    write: (message) => logger.info(message.trim())
-  }
-}));
+app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 
-// Global rate limiting
-app.use(createRateLimit(15 * 60 * 1000, 100)); // 100 requests per 15 minutes
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
+// Health check route (no auth required)
+app.use('/api/health', healthRoutes);
 
 // API routes
 app.use('/api/mpesa', mpesaRoutes);
-app.use('/api/bridge', bridgeRoutes);
-// app.use('/api/recovery', recoveryRoutes);
+
+// Also mount under /api/blockcoop to match Daraja-configured CALLBACK URLs
+app.use('/api/blockcoop', mpesaRoutes);
+
+// Error handling middleware
+app.use(errorHandler);
 
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
+    success: false,
     error: 'Endpoint not found',
-    path: req.originalUrl,
-    method: req.method
+    path: req.originalUrl
   });
 });
 
-// Global error handler
-app.use((error, req, res, next) => {
-  logger.error('Unhandled error:', error);
-  
-  res.status(error.status || 500).json({
-    error: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
-      : error.message,
-    ...(process.env.NODE_ENV !== 'production' && { stack: error.stack })
-  });
-});
+// Initialize database and start server
+async function startServer() {
+  try {
+    await initializeDatabase();
+    logger.info('Database initialized successfully');
+
+    app.listen(PORT, () => {
+      logger.info(`🚀 BlockCoop Backend API running on port ${PORT}`);
+      logger.info(`📱 M-Pesa integration ready`);
+      logger.info(`🔗 Blockchain integration enabled`);
+      logger.info(`🔄 Recovery service initialized`);
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -110,15 +128,6 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Start server
-app.listen(PORT, () => {
-  logger.info(`M-Pesa Backend Server running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
-
-  // Start recovery service
-  // recoveryService.startRecoveryProcess();
-  // logger.info('Recovery service started');
-});
+startServer();
 
 export default app;

@@ -1,214 +1,229 @@
 import axios from 'axios';
-import { mpesaConfig } from '../config/mpesa.js';
-import logger from '../config/logger.js';
+import { logger } from '../utils/logger.js';
+import { MpesaTransaction } from '../models/MpesaTransaction.js';
 
 class MpesaService {
   constructor() {
-    this.accessToken = null;
-    this.tokenExpiry = null;
+    this.consumerKey = process.env.MPESA_CONSUMER_KEY;
+    this.consumerSecret = process.env.MPESA_CONSUMER_SECRET;
+    this.businessShortCode = process.env.MPESA_BUSINESS_SHORT_CODE;
+    this.passkey = process.env.MPESA_PASSKEY;
+    this.baseUrl = process.env.MPESA_BASE_URL || 'https://sandbox.safaricom.co.ke';
+    this.callbackUrl = process.env.MPESA_CALLBACK_URL || `${process.env.CALLBACK_BASE_URL}/api/mpesa/callback`;
+    this.timeoutUrl = process.env.MPESA_TIMEOUT_URL || `${process.env.CALLBACK_BASE_URL}/api/mpesa/timeout`;
+
+    // Exchange rate (configurable)
+    this.usdToKesRate = parseFloat(process.env.USD_TO_KES_RATE || '149.25');
   }
 
-  // Generate timestamp in the format required by M-Pesa
-  generateTimestamp() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hour = String(now.getHours()).padStart(2, '0');
-    const minute = String(now.getMinutes()).padStart(2, '0');
-    const second = String(now.getSeconds()).padStart(2, '0');
-    
-    return `${year}${month}${day}${hour}${minute}${second}`;
-  }
-
-  // Generate password for M-Pesa API
-  generatePassword(timestamp) {
-    const data = `${mpesaConfig.businessShortCode}${mpesaConfig.passkey}${timestamp}`;
-    return Buffer.from(data).toString('base64');
-  }
-
-  // Get access token from M-Pesa API
+  // Get OAuth token from M-Pesa
   async getAccessToken() {
     try {
-      // Check if we have a valid token
-      if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
-        return this.accessToken;
-      }
-
-      const auth = Buffer.from(`${mpesaConfig.consumerKey}:${mpesaConfig.consumerSecret}`).toString('base64');
+      const auth = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64');
       
-      const response = await axios.get(mpesaConfig.authUrl, {
+      const response = await axios.get(`${this.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
         headers: {
           'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (response.data && response.data.access_token) {
-        this.accessToken = response.data.access_token;
-        // Token expires in 1 hour, set expiry to 55 minutes to be safe
-        this.tokenExpiry = Date.now() + (55 * 60 * 1000);
-        
-        logger.info('M-Pesa access token generated successfully');
-        return this.accessToken;
-      } else {
-        throw new Error('Failed to get access token from M-Pesa API');
-      }
+      return response.data.access_token;
     } catch (error) {
-      logger.error('Error generating M-Pesa access token:', error);
-      throw new Error(`Failed to authenticate with M-Pesa: ${error.message}`);
+      logger.error('Failed to get M-Pesa access token:', error.response?.data || error.message);
+      throw new Error('Failed to authenticate with M-Pesa API');
     }
   }
 
-  // Initiate STK Push
-  async initiateSTKPush(phoneNumber, amount, accountReference, transactionDesc, callbackUrl) {
+  // Generate timestamp for M-Pesa API
+  generateTimestamp() {
+    const now = new Date();
+    return now.getFullYear() +
+           String(now.getMonth() + 1).padStart(2, '0') +
+           String(now.getDate()).padStart(2, '0') +
+           String(now.getHours()).padStart(2, '0') +
+           String(now.getMinutes()).padStart(2, '0') +
+           String(now.getSeconds()).padStart(2, '0');
+  }
+
+  // Generate password for STK Push
+  generatePassword(timestamp) {
+    const data = this.businessShortCode + this.passkey + timestamp;
+    return Buffer.from(data).toString('base64');
+  }
+
+  // Convert USD to KES
+  convertUsdToKes(usdAmount) {
+    return Math.round(usdAmount * this.usdToKesRate);
+  }
+
+  // Initiate STK Push payment
+  async initiateSTKPush(paymentData) {
+    const { walletAddress, packageId, phoneNumber, amount, referrerAddress } = paymentData;
+    
     try {
+      // Convert amount to KES
+      const kesAmount = this.convertUsdToKes(amount);
+      
+      // Validate minimum amount (KES 1)
+      if (kesAmount < 1) {
+        throw new Error('Amount too small for M-Pesa transaction');
+      }
+
+      // Get access token
       const accessToken = await this.getAccessToken();
+      
+      // Generate timestamp and password
       const timestamp = this.generateTimestamp();
       const password = this.generatePassword(timestamp);
 
-      const requestBody = {
-        BusinessShortCode: mpesaConfig.businessShortCode,
-        Password: password,
-        Timestamp: timestamp,
-        TransactionType: mpesaConfig.transactionType,
-        Amount: Math.round(amount), // M-Pesa requires integer amounts
-        PartyA: phoneNumber,
-        PartyB: mpesaConfig.businessShortCode,
-        PhoneNumber: phoneNumber,
-        CallBackURL: callbackUrl,
-        AccountReference: accountReference,
-        TransactionDesc: transactionDesc
-      };
-
-      logger.info('Initiating STK Push', {
+      // Create transaction record
+      const transaction = await MpesaTransaction.create({
+        walletAddress,
+        packageId,
         phoneNumber,
-        amount,
-        accountReference,
-        businessShortCode: mpesaConfig.businessShortCode
+        amountUsd: amount,
+        amountKes: kesAmount,
+        referrerAddress,
+        status: 'pending'
       });
 
-      const response = await axios.post(mpesaConfig.stkPushUrl, requestBody, {
+      // Prepare STK Push request
+      const stkPushData = {
+        BusinessShortCode: this.businessShortCode,
+        Password: password,
+        Timestamp: timestamp,
+        TransactionType: 'CustomerPayBillOnline',
+        Amount: kesAmount,
+        PartyA: phoneNumber,
+        PartyB: this.businessShortCode,
+        PhoneNumber: phoneNumber,
+        CallBackURL: this.callbackUrl,
+        AccountReference: `PKG${packageId}-${transaction.id}`,
+        TransactionDesc: `BlockCoop Package ${packageId} Purchase`
+      };
+
+      logger.info('Initiating STK Push:', {
+        transactionId: transaction.id,
+        amount: kesAmount,
+        phoneNumber: phoneNumber.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1***$4')
+      });
+
+      // Send STK Push request
+      const response = await axios.post(`${this.baseUrl}/mpesa/stkpush/v1/processrequest`, stkPushData, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (response.data && response.data.ResponseCode === '0') {
-        logger.info('STK Push initiated successfully', {
-          checkoutRequestId: response.data.CheckoutRequestID,
-          merchantRequestId: response.data.MerchantRequestID
-        });
-        
-        return {
-          success: true,
-          checkoutRequestId: response.data.CheckoutRequestID,
-          merchantRequestId: response.data.MerchantRequestID,
-          responseDescription: response.data.ResponseDescription
-        };
-      } else {
-        logger.error('STK Push failed', response.data);
-        return {
-          success: false,
-          error: response.data.ResponseDescription || 'STK Push failed',
-          errorCode: response.data.ResponseCode
-        };
-      }
-    } catch (error) {
-      logger.error('Error initiating STK Push:', error);
+      // Update transaction with checkout request ID
+      await transaction.update({
+        checkoutRequestId: response.data.CheckoutRequestID,
+        merchantRequestId: response.data.MerchantRequestID
+      });
+
+      logger.info('STK Push initiated successfully:', {
+        transactionId: transaction.id,
+        checkoutRequestId: response.data.CheckoutRequestID
+      });
+
       return {
-        success: false,
-        error: error.response?.data?.ResponseDescription || error.message || 'Failed to initiate payment'
+        success: true,
+        transactionId: transaction.id,
+        checkoutRequestId: response.data.CheckoutRequestID,
+        message: 'Payment request sent to your phone. Please enter your M-Pesa PIN to complete the transaction.',
+        amount: {
+          usd: amount,
+          kes: kesAmount
+        }
       };
+
+    } catch (error) {
+      logger.error('STK Push failed:', error.response?.data || error.message);
+      
+      // Return appropriate error message
+      if (error.response?.data?.errorMessage) {
+        throw new Error(error.response.data.errorMessage);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Failed to initiate M-Pesa payment');
+      }
     }
   }
 
   // Query STK Push status
-  async querySTKPush(checkoutRequestId) {
+  async querySTKPushStatus(checkoutRequestId) {
     try {
+      const transaction = await MpesaTransaction.findOne({
+        where: { checkoutRequestId }
+      });
+
+      if (!transaction) {
+        throw new Error('Transaction not found');
+      }
+
+      // Get access token
       const accessToken = await this.getAccessToken();
+      
+      // Generate timestamp and password
       const timestamp = this.generateTimestamp();
       const password = this.generatePassword(timestamp);
 
-      const requestBody = {
-        BusinessShortCode: mpesaConfig.businessShortCode,
+      // Prepare query request
+      const queryData = {
+        BusinessShortCode: this.businessShortCode,
         Password: password,
         Timestamp: timestamp,
         CheckoutRequestID: checkoutRequestId
       };
 
-      const response = await axios.post(mpesaConfig.stkQueryUrl, requestBody, {
+      // Send query request
+      const response = await axios.post(`${this.baseUrl}/mpesa/stkpushquery/v1/query`, queryData, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         }
       });
 
-      logger.info('STK Push query response', {
-        checkoutRequestId,
-        responseCode: response.data.ResponseCode,
-        resultCode: response.data.ResultCode
+      // Update transaction status based on response
+      let status = 'pending';
+      if (response.data.ResultCode === '0') {
+        status = 'completed';
+      } else if (response.data.ResultCode !== '1032') { // 1032 means still pending
+        status = 'failed';
+      }
+
+      await transaction.update({
+        status,
+        mpesaReceiptNumber: response.data.MpesaReceiptNumber || null,
+        resultCode: response.data.ResultCode,
+        resultDesc: response.data.ResultDesc
       });
 
       return {
         success: true,
-        data: response.data
+        transaction: {
+          id: transaction.id,
+          status: transaction.status,
+          amount: {
+            usd: transaction.amountUsd,
+            kes: transaction.amountKes
+          },
+          phoneNumber: transaction.phoneNumber,
+          mpesaReceiptNumber: transaction.mpesaReceiptNumber,
+          createdAt: transaction.createdAt
+        },
+        mpesaStatus: {
+          resultCode: response.data.ResultCode,
+          resultDesc: response.data.ResultDesc
+        }
       };
+
     } catch (error) {
-      logger.error('Error querying STK Push status:', error);
-      return {
-        success: false,
-        error: error.response?.data?.ResponseDescription || error.message || 'Failed to query payment status'
-      };
-    }
-  }
-
-  // Parse M-Pesa callback data
-  parseCallbackData(callbackBody) {
-    try {
-      const stkCallback = callbackBody.Body?.stkCallback;
-      
-      if (!stkCallback) {
-        throw new Error('Invalid callback data structure');
-      }
-
-      const result = {
-        merchantRequestId: stkCallback.MerchantRequestID,
-        checkoutRequestId: stkCallback.CheckoutRequestID,
-        resultCode: stkCallback.ResultCode,
-        resultDesc: stkCallback.ResultDesc
-      };
-
-      // If payment was successful, extract metadata
-      if (stkCallback.ResultCode === 0 && stkCallback.CallbackMetadata) {
-        const metadata = stkCallback.CallbackMetadata.Item || [];
-
-        // Handle both array and object formats
-        const items = Array.isArray(metadata) ? metadata : Object.values(metadata);
-
-        items.forEach(item => {
-          switch (item.Name) {
-            case 'Amount':
-              result.amount = item.Value;
-              break;
-            case 'MpesaReceiptNumber':
-              result.mpesaReceiptNumber = item.Value;
-              break;
-            case 'TransactionDate':
-              result.transactionDate = item.Value;
-              break;
-            case 'PhoneNumber':
-              result.phoneNumber = item.Value;
-              break;
-          }
-        });
-      }
-
-      return result;
-    } catch (error) {
-      logger.error('Error parsing callback data:', error);
-      throw new Error('Failed to parse M-Pesa callback data');
+      logger.error('STK Push query failed:', error.response?.data || error.message);
+      throw new Error('Failed to query payment status');
     }
   }
 }
