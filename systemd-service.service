@@ -1,0 +1,48 @@
+# Systemd service file for BlockCoop M-Pesa Backend
+# Save this as: /etc/systemd/system/mpesa-backend.service
+
+[Unit]
+Description=BlockCoop M-Pesa Backend API
+Documentation=https://api.blockcoopsacco.com
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/api.blockcoopsacco.com/backend
+ExecStart=/usr/bin/node src/server.js
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=3001
+EnvironmentFile=/var/www/api.blockcoopsacco.com/backend/.env.production
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/api.blockcoopsacco.com
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mpesa-backend
+
+[Install]
+WantedBy=multi-user.target

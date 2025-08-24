@@ -77,7 +77,7 @@ export function NetworkStatus({
       <div className={`flex items-center space-x-2 ${className}`}>
         {getStatusIcon()}
         <Badge variant={getBadgeVariant()}>
-          {isCorrectNetwork ? 'BSC Testnet' : `Chain ${currentChainId}`}
+          {isCorrectNetwork ? (targetChainId === 56 ? 'BSC Mainnet' : 'BSC Testnet') : `Chain ${currentChainId}`}
         </Badge>
         {!isCorrectNetwork && showSwitchButton && canSwitch && (
           <Button
@@ -121,7 +121,7 @@ export function NetworkStatus({
                 Switching...
               </>
             ) : (
-              'Switch to BSC Testnet'
+              targetChainId === 56 ? 'Switch to BSC Mainnet' : 'Switch to BSC Testnet'
             )}
           </Button>
         )}
@@ -136,7 +136,7 @@ export function NetworkStatus({
                 Wrong Network Detected
               </p>
               <p className="text-yellow-700 mt-1">
-                This DApp requires BSC Testnet (Chain ID: {targetChainId}). 
+                This DApp requires {targetChainId === 56 ? 'BSC Mainnet' : 'BSC Testnet'} (Chain ID: {targetChainId}).
                 {canSwitch 
                   ? ' Please switch your network to continue using the application.'
                   : ' Please manually switch your wallet to BSC Testnet.'
@@ -146,11 +146,11 @@ export function NetworkStatus({
                 <div className="mt-2 text-xs text-yellow-600">
                   <p><strong>Manual Setup Instructions:</strong></p>
                   <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>Network Name: BSC Testnet</li>
-                    <li>RPC URL: https://data-seed-prebsc-1-s1.binance.org:8545/</li>
-                    <li>Chain ID: 97</li>
-                    <li>Symbol: tBNB</li>
-                    <li>Block Explorer: https://testnet.bscscan.com</li>
+                    <li>Network Name: {targetChainId === 56 ? 'BSC Mainnet' : 'BSC Testnet'}</li>
+                    <li>RPC URL: {targetChainId === 56 ? 'https://bsc-dataseed1.binance.org/' : 'https://data-seed-prebsc-1-s1.binance.org:8545/'}</li>
+                    <li>Chain ID: {targetChainId}</li>
+                    <li>Symbol: {targetChainId === 56 ? 'BNB' : 'tBNB'}</li>
+                    <li>Block Explorer: {targetChainId === 56 ? 'https://bscscan.com' : 'https://testnet.bscscan.com'}</li>
                   </ul>
                 </div>
               )}

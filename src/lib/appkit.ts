@@ -98,8 +98,6 @@ export const appKitConfig: AppKitConfig = {
     router: getEnvVar('VITE_ROUTER_ADDRESS', true),
     factory: getEnvVar('VITE_FACTORY_ADDRESS', true),
     packageManager: getEnvVar('VITE_PACKAGE_MANAGER_ADDRESS', true),
-    dividendDistributor: getEnvVar('VITE_DIVIDEND_DISTRIBUTOR_ADDRESS', false),
-    secondaryMarket: getEnvVar('VITE_SECONDARY_MARKET_ADDRESS', false),
     staking: stakingAddress,
   },
   network: getCurrentNetworkConfig(),

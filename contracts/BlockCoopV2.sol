@@ -216,6 +216,18 @@ contract VestingVault is AccessControl, ReentrancyGuard {
         emit Claimed(msg.sender, unreleased);
     }
 
+    // Allow anyone to trigger a claim on behalf of a user; funds always go to the user
+    function claimFor(address user) external nonReentrant {
+        require(user != address(0), "Invalid user");
+        uint256 vested = vestedAmount(user);
+        uint256 unreleased = vested - released[user];
+        require(unreleased > 0, "Nothing to claim");
+
+        released[user] += unreleased;
+        IERC20(address(shareToken)).safeTransfer(user, unreleased);
+        emit Claimed(user, unreleased);
+    }
+
     function vestedAmount(address user) public view returns (uint256) {
         Schedule memory s = userSchedule[user];
         uint256 startCliff = s.start + s.cliff;

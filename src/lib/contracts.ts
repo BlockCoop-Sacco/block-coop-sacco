@@ -42,7 +42,7 @@ export interface ContractConnectionState {
 export function getProvider(): JsonRpcProvider {
   return new JsonRpcProvider(appKitConfig.rpcUrl, {
     chainId: appKitConfig.chainId,
-    name: 'BSC Testnet'
+    name: appKitConfig.chainId === 56 ? 'BSC Mainnet' : 'BSC Testnet'
   });
 }
 

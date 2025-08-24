@@ -6,7 +6,7 @@ module.exports = {
   solidity: {
     version: "0.8.20",
     settings: {
-      optimizer: { enabled: true, runs: 200 },
+      optimizer: { enabled: true, runs: process.env.SOLC_RUNS ? parseInt(process.env.SOLC_RUNS) : 200 },
       viaIR: true
     },
   },
@@ -29,7 +29,7 @@ module.exports = {
       chainId: 56,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       timeout: 60000,        // 60 seconds timeout
-      gasPrice: 5000000000,  // 5 gwei (lower for mainnet)
+      gasPrice: 2000000000,  // 5 gwei (lower for mainnet)
       gas: 8000000,          // 8M gas limit
       blockGasLimit: 30000000, // 30M block gas limit
       allowUnlimitedContractSize: true,

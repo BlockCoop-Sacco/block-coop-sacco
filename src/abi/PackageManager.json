@@ -9,17 +9,17 @@
         },
         {
           "internalType": "address",
-          "name": "shareToken_",
+          "name": "share_",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "lpToken_",
+          "name": "lp_",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "vestingVault_",
+          "name": "vault_",
           "type": "address"
         },
         {
@@ -39,7 +39,7 @@
         },
         {
           "internalType": "address",
-          "name": "taxManager_",
+          "name": "tax_",
           "type": "address"
         },
         {
@@ -109,13 +109,32 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "oldPrice",
+          "name": "oldWindow",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "newPrice",
+          "name": "newWindow",
+          "type": "uint256"
+        }
+      ],
+      "name": "DeadlineWindowUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "oldGlobalTargetPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newGlobalTargetPrice",
           "type": "uint256"
         }
       ],
@@ -126,19 +145,49 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": true,
           "internalType": "uint256",
-          "name": "required",
+          "name": "packageId",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "available",
+          "name": "shareTokenAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "usdtAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "liquidityTokens",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "actualShareToken",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "actualUSDT",
           "type": "uint256"
         }
       ],
-      "name": "InsufficientTreasuryFunds",
+      "name": "LiquidityAdded",
       "type": "event"
     },
     {
@@ -164,18 +213,74 @@
         },
         {
           "indexed": false,
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "LiquidityAdditionFailed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": false,
           "internalType": "uint256",
-          "name": "blocksAmount",
+          "name": "lpTokensBurned",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "liquidity",
+          "name": "liquidityRemoved",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "shareTokenReceived",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "usdtReceived",
           "type": "uint256"
         }
       ],
-      "name": "LiquidityAdded",
+      "name": "LiquidityRedeemed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "marketPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "globalTargetPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "priceDifference",
+          "type": "uint256"
+        }
+      ],
+      "name": "MarketPriceUsed",
       "type": "event"
     },
     {
@@ -238,8 +343,65 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "oldExchangeRate",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newExchangeRate",
+          "type": "uint256"
+        }
+      ],
+      "name": "PackageExchangeRateUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "active",
+          "type": "bool"
+        }
+      ],
+      "name": "PackageToggled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
           "internalType": "address",
-          "name": "user",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "Paused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "buyer",
           "type": "address"
         },
         {
@@ -279,7 +441,7 @@
           "type": "uint256"
         },
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "address",
           "name": "referrer",
           "type": "address"
@@ -291,20 +453,7 @@
           "type": "uint256"
         }
       ],
-      "name": "PackagePurchased",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "Paused",
+      "name": "Purchased",
       "type": "event"
     },
     {
@@ -313,23 +462,17 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "referrer",
+          "name": "user",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "totalPending",
+          "name": "lpAmount",
           "type": "uint256"
         }
       ],
-      "name": "PendingReferralAdded",
+      "name": "Redeemed",
       "type": "event"
     },
     {
@@ -346,49 +489,6 @@
           "internalType": "address",
           "name": "buyer",
           "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "packageId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "rewardAmount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "treasuryBalance",
-          "type": "uint256"
-        }
-      ],
-      "name": "ReferralPaymentSkipped",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "referrer",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "buyer",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "packageId",
-          "type": "uint256"
         },
         {
           "indexed": false,
@@ -397,7 +497,7 @@
           "type": "uint256"
         }
       ],
-      "name": "ReferralRewardPaid",
+      "name": "ReferralPaid",
       "type": "event"
     },
     {
@@ -479,19 +579,43 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": true,
           "internalType": "uint256",
-          "name": "currentBalance",
+          "name": "packageId",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "threshold",
+          "name": "requestedShareToken",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "requestedUSDT",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "minShareToken",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "minUSDT",
           "type": "uint256"
         }
       ],
-      "name": "TreasuryLowBalance",
+      "name": "SlippageProtectionTriggered",
       "type": "event"
     },
     {
@@ -500,17 +624,86 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "oldThreshold",
+          "name": "oldTolerance",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "newThreshold",
+          "name": "newTolerance",
           "type": "uint256"
         }
       ],
-      "name": "TreasuryThresholdUpdated",
+      "name": "SlippageToleranceUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "taxKey",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        }
+      ],
+      "name": "TaxApplied",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "buyer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "packageId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "TreasuryBlocksAllocated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "oldTreasury",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newTreasury",
+          "type": "address"
+        }
+      ],
+      "name": "TreasuryUpdated",
       "type": "event"
     },
     {
@@ -554,19 +747,6 @@
     },
     {
       "inputs": [],
-      "name": "PACKAGE_MANAGER_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "PURCHASE_TAX_KEY",
       "outputs": [
         {
@@ -580,12 +760,51 @@
     },
     {
       "inputs": [],
-      "name": "REFERRAL_TAX_KEY",
+      "name": "SERVER_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
           "name": "",
           "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "USDT_DEC",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "USDT_SCALE",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "USDT_SCALE_UP",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -635,55 +854,16 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "packageId",
-          "type": "uint256"
-        }
-      ],
-      "name": "calculatePackageSplits",
+      "inputs": [],
+      "name": "deadlineWindow",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "totalTokens",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "vestTokens",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "poolTokens",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "lpTokens",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "referralRewardAmount",
+          "name": "",
           "type": "uint256"
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "emergencyTreasuryTopUp",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -701,59 +881,12 @@
     },
     {
       "inputs": [],
-      "name": "getActivePackages",
+      "name": "getActivePackageIds",
       "outputs": [
         {
-          "components": [
-            {
-              "internalType": "string",
-              "name": "name",
-              "type": "string"
-            },
-            {
-              "internalType": "uint256",
-              "name": "entryUSDT",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "exchangeRate",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint16",
-              "name": "vestBps",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint64",
-              "name": "cliff",
-              "type": "uint64"
-            },
-            {
-              "internalType": "uint64",
-              "name": "duration",
-              "type": "uint64"
-            },
-            {
-              "internalType": "uint16",
-              "name": "referralBps",
-              "type": "uint16"
-            },
-            {
-              "internalType": "bool",
-              "name": "active",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "exists",
-              "type": "bool"
-            }
-          ],
-          "internalType": "struct PackageManagerV2_Fixed.Package[]",
+          "internalType": "uint256[]",
           "name": "",
-          "type": "tuple[]"
+          "type": "uint256[]"
         }
       ],
       "stateMutability": "view",
@@ -761,59 +894,17 @@
     },
     {
       "inputs": [],
-      "name": "getAllPackages",
+      "name": "getCurrentMarketPrice",
       "outputs": [
         {
-          "components": [
-            {
-              "internalType": "string",
-              "name": "name",
-              "type": "string"
-            },
-            {
-              "internalType": "uint256",
-              "name": "entryUSDT",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "exchangeRate",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint16",
-              "name": "vestBps",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint64",
-              "name": "cliff",
-              "type": "uint64"
-            },
-            {
-              "internalType": "uint64",
-              "name": "duration",
-              "type": "uint64"
-            },
-            {
-              "internalType": "uint16",
-              "name": "referralBps",
-              "type": "uint16"
-            },
-            {
-              "internalType": "bool",
-              "name": "active",
-              "type": "bool"
-            },
-            {
-              "internalType": "bool",
-              "name": "exists",
-              "type": "bool"
-            }
-          ],
-          "internalType": "struct PackageManagerV2_Fixed.Package[]",
-          "name": "",
-          "type": "tuple[]"
+          "internalType": "uint256",
+          "name": "marketPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "hasLiquidity",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -832,11 +923,6 @@
         {
           "components": [
             {
-              "internalType": "string",
-              "name": "name",
-              "type": "string"
-            },
-            {
               "internalType": "uint256",
               "name": "entryUSDT",
               "type": "uint256"
@@ -847,11 +933,6 @@
               "type": "uint256"
             },
             {
-              "internalType": "uint16",
-              "name": "vestBps",
-              "type": "uint16"
-            },
-            {
               "internalType": "uint64",
               "name": "cliff",
               "type": "uint64"
@@ -860,6 +941,11 @@
               "internalType": "uint64",
               "name": "duration",
               "type": "uint64"
+            },
+            {
+              "internalType": "uint16",
+              "name": "vestBps",
+              "type": "uint16"
             },
             {
               "internalType": "uint16",
@@ -875,9 +961,14 @@
               "internalType": "bool",
               "name": "exists",
               "type": "bool"
+            },
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
             }
           ],
-          "internalType": "struct PackageManagerV2_Fixed.Package",
+          "internalType": "struct PackageManagerV2_2.Package",
           "name": "",
           "type": "tuple"
         }
@@ -886,14 +977,8 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "referrer",
-          "type": "address"
-        }
-      ],
-      "name": "getPendingReferralAmount",
+      "inputs": [],
+      "name": "getPackageCount",
       "outputs": [
         {
           "internalType": "uint256",
@@ -905,46 +990,13 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "referrer",
-          "type": "address"
-        }
-      ],
-      "name": "getReferralEarnings",
+      "inputs": [],
+      "name": "getPackageIds",
       "outputs": [
         {
-          "components": [
-            {
-              "internalType": "address",
-              "name": "buyer",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "packageId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "reward",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "blockNumber",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct PackageManagerV2_Fixed.ReferralEarning[]",
+          "internalType": "uint256[]",
           "name": "",
-          "type": "tuple[]"
+          "type": "uint256[]"
         }
       ],
       "stateMutability": "view",
@@ -970,23 +1022,156 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getTreasuryBalanceStatus",
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getUserPackageCount",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "currentBalance",
+          "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getUserPackages",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "packageId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "usdtAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "totalTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "vestTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "poolTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lpTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "referrer",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "referralReward",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PackageManagerV2_2.UserPurchase[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "minimumThreshold",
+          "name": "index",
           "type": "uint256"
-        },
+        }
+      ],
+      "name": "getUserPurchase",
+      "outputs": [
         {
-          "internalType": "bool",
-          "name": "isLowBalance",
-          "type": "bool"
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "packageId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "usdtAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "totalTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "vestTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "poolTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lpTokens",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "referrer",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "referralReward",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PackageManagerV2_2.UserPurchase",
+          "name": "",
+          "type": "tuple"
         }
       ],
       "stateMutability": "view",
@@ -1069,9 +1254,52 @@
               "type": "uint256"
             }
           ],
-          "internalType": "struct PackageManagerV2_Fixed.UserPurchase[]",
+          "internalType": "struct PackageManagerV2_2.UserPurchase[]",
           "name": "",
           "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getUserRedemptionCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getUserRedemptions",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "amounts",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "timestamps",
+          "type": "uint256[]"
         }
       ],
       "stateMutability": "view",
@@ -1123,9 +1351,19 @@
               "internalType": "uint256",
               "name": "purchaseCount",
               "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "redemptionCount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "totalRedemptions",
+              "type": "uint256"
             }
           ],
-          "internalType": "struct PackageManagerV2_Fixed.UserStats",
+          "internalType": "struct PackageManagerV2_2.UserStats",
           "name": "",
           "type": "tuple"
         }
@@ -1190,6 +1428,13 @@
     },
     {
       "inputs": [],
+      "name": "initRouterAllowances",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "lpToken",
       "outputs": [
         {
@@ -1216,6 +1461,13 @@
     },
     {
       "inputs": [],
+      "name": "pause",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "paused",
       "outputs": [
         {
@@ -1225,44 +1477,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "pendingReferralRewards",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "referrer",
-          "type": "address"
-        }
-      ],
-      "name": "processPendingReferrals",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "amountPaid",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -1279,6 +1493,42 @@
         }
       ],
       "name": "purchase",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "buyer",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "referrer",
+          "type": "address"
+        }
+      ],
+      "name": "purchaseFor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "lpAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "redeem",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1336,6 +1586,19 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "newWindow",
+          "type": "uint256"
+        }
+      ],
+      "name": "setDeadlineWindow",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "newPrice",
           "type": "uint256"
         }
@@ -1349,11 +1612,42 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "newThreshold",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "newExchangeRate",
           "type": "uint256"
         }
       ],
-      "name": "setTreasuryMinimumThreshold",
+      "name": "setPackageExchangeRate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "newTolBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "setSlippageTolerance",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newTreasury",
+          "type": "address"
+        }
+      ],
+      "name": "setTreasury",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1373,7 +1667,7 @@
     },
     {
       "inputs": [],
-      "name": "slippageToleranceBps",
+      "name": "slippageTolerance",
       "outputs": [
         {
           "internalType": "uint256",
@@ -1417,6 +1711,19 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        }
+      ],
+      "name": "togglePackage",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "treasury",
       "outputs": [
@@ -1431,28 +1738,9 @@
     },
     {
       "inputs": [],
-      "name": "treasuryAllocationBps",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "treasuryMinimumThreshold",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
+      "name": "unpause",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

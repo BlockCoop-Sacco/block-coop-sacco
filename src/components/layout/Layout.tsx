@@ -57,31 +57,26 @@ export function Layout({ children }: LayoutProps) {
 
     console.log('Setting up blockchain event listeners...');
 
-    // Listen for package purchases (correct event name is 'PackagePurchased')
-    const handlePackagePurchased = (buyer: string, packageId: any, usdtAmount: any, blocksAmount: any, lpTokens: any, referralReward: any) => {
-      console.log('Package purchased event:', {
-        buyer,
-        packageId: packageId.toString(),
-        usdtAmount: usdtAmount.toString(),
-        blocksAmount: blocksAmount.toString(),
-        lpTokens: lpTokens.toString(),
-        referralReward: referralReward.toString()
-      });
-
-      // Only refresh if the current user made the purchase
-      if (buyer.toLowerCase() === account.toLowerCase()) {
-        debouncedRefresh('purchase');
+    // Listen for package purchases (contract event name is 'Purchased')
+    const handlePurchased = (buyer: string, packageId: any, ...rest: any[]) => {
+      try {
+        console.log('Purchased event:', { buyer, packageId: packageId?.toString?.(), restCount: rest?.length });
+        if (buyer && account && buyer.toLowerCase() === account.toLowerCase()) {
+          debouncedRefresh('purchase');
+        }
+      } catch (e) {
+        console.warn('Purchased event handler error:', e);
       }
     };
 
     // Subscribe to events if contract is available
     if (contracts.packageManager) {
       try {
-        // Use the correct event name 'PackagePurchased'
-        contracts.packageManager.on('PackagePurchased', handlePackagePurchased);
-        console.log('Successfully subscribed to PackagePurchased events');
+        // Subscribe to the actual event name from the contract
+        contracts.packageManager.on('Purchased', handlePurchased);
+        console.log('Successfully subscribed to Purchased events');
       } catch (error) {
-        console.warn('Failed to subscribe to PackagePurchased events:', error);
+        console.warn('Failed to subscribe to Purchased events:', error);
       }
     }
 
@@ -90,10 +85,10 @@ export function Layout({ children }: LayoutProps) {
       console.log('Cleaning up blockchain event listeners...');
       if (contracts.packageManager) {
         try {
-          contracts.packageManager.removeListener('PackagePurchased', handlePackagePurchased);
-          console.log('Successfully cleaned up PackagePurchased event listener');
+          contracts.packageManager.removeListener('Purchased', handlePurchased);
+          console.log('Successfully cleaned up Purchased event listener');
         } catch (error) {
-          console.warn('Error cleaning up PackagePurchased event listener:', error);
+          console.warn('Error cleaning up Purchased event listener:', error);
         }
       }
 

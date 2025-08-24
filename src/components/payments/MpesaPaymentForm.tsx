@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Smartphone, AlertCircle, CheckCircle, Clock, X, Wifi, WifiOff } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Smartphone, AlertCircle, CheckCircle, Clock, X, Wifi, WifiOff, RefreshCw, Info } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card, CardContent } from '../ui/Card';
@@ -20,6 +20,12 @@ interface MpesaPaymentFormProps {
 
 type PaymentStep = 'input' | 'processing' | 'waiting' | 'completed' | 'failed';
 
+interface ConnectionStatus {
+  status: 'checking' | 'connected' | 'disconnected';
+  lastChecked?: Date;
+  error?: string;
+}
+
 export function MpesaPaymentForm({
   walletAddress,
   packageId,
@@ -30,34 +36,61 @@ export function MpesaPaymentForm({
 }: MpesaPaymentFormProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [step, setStep] = useState<PaymentStep>('input');
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
+    status: 'checking'
+  });
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const { paymentState, initiatePayment, resetPayment } = useMpesaPayment();
   const kesAmount = Math.round(amount * 149.25);
 
   // Check backend connection status
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        // Use the same API base URL as the M-Pesa service
-        const API_BASE_URL = import.meta.env.VITE_MPESA_API_URL || 'https://api.blockcoopsacco.com/api';
-        const healthUrl = API_BASE_URL.replace('/api', '/health');
-        const response = await fetch(healthUrl);
-        if (response.ok) {
-          setConnectionStatus('connected');
-        } else {
-          setConnectionStatus('disconnected');
-        }
-      } catch (error) {
-        setConnectionStatus('disconnected');
-      }
-    };
+  const checkConnection = useCallback(async () => {
+    try {
+      setConnectionStatus(prev => ({ ...prev, status: 'checking' }));
 
+      const API_BASE_URL = import.meta.env.VITE_MPESA_API_URL || 'https://api.blockcoopsacco.com/api';
+      const healthUrl = `${API_BASE_URL}/health`;
+
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConnectionStatus({
+          status: 'connected',
+          lastChecked: new Date(),
+          error: undefined
+        });
+        setLastError(null);
+      } else {
+        throw new Error(`Health check failed: ${response.status}`);
+      }
+    } catch (error: any) {
+      console.error('Connection check failed:', error);
+      setConnectionStatus({
+        status: 'disconnected',
+        lastChecked: new Date(),
+        error: error.message
+      });
+      setLastError(`Connection failed: ${error.message}`);
+    }
+  }, []);
+
+  useEffect(() => {
     checkConnection();
+
     // Check connection every 30 seconds
     const interval = setInterval(checkConnection, 30000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [checkConnection]);
 
   // Update step based on payment state
   useEffect(() => {
@@ -106,22 +139,60 @@ export function MpesaPaymentForm({
   // Validate phone number
   const isValidPhoneNumber = mpesaApi.validatePhoneNumber(phoneNumber);
 
-  // Handle payment initiation
+  // Handle payment initiation with retry logic
   const handleInitiatePayment = async () => {
     if (!isValidPhoneNumber) {
       toast.error('Please enter a valid Kenyan phone number');
       return;
     }
 
-    const success = await initiatePayment({
-      packageId,
-      phoneNumber,
-      amount,
-      referrerAddress
-    });
+    if (connectionStatus.status === 'disconnected') {
+      toast.error('Unable to connect to payment service. Please check your connection and try again.');
+      return;
+    }
 
-    if (!success) {
+    setLastError(null);
+    setStep('processing');
+
+    try {
+      const success = await initiatePayment({
+        packageId,
+        phoneNumber,
+        amount,
+        referrerAddress
+      });
+
+      if (success) {
+        setStep('waiting');
+        setRetryCount(0);
+        toast.success('Payment request sent! Please check your phone for M-Pesa prompt.');
+      } else {
+        setStep('failed');
+        setRetryCount(prev => prev + 1);
+      }
+    } catch (error: any) {
+      console.error('Payment initiation error:', error);
+      setLastError(error.message || 'Failed to initiate payment');
       setStep('failed');
+      setRetryCount(prev => prev + 1);
+      toast.error(error.message || 'Failed to initiate payment. Please try again.');
+    }
+  };
+
+  // Handle retry payment
+  const handleRetryPayment = async () => {
+    if (retryCount >= 3) {
+      toast.error('Maximum retry attempts reached. Please try again later.');
+      return;
+    }
+
+    // Check connection before retry
+    await checkConnection();
+
+    if (connectionStatus.status === 'connected') {
+      await handleInitiatePayment();
+    } else {
+      toast.error('Please check your internet connection and try again.');
     }
   };
 
@@ -132,7 +203,7 @@ export function MpesaPaymentForm({
   };
 
   const renderConnectionStatus = () => {
-    if (connectionStatus === 'checking') {
+    if (connectionStatus.status === 'checking') {
       return (
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
           <Clock className="w-4 h-4 animate-spin" />
@@ -141,19 +212,42 @@ export function MpesaPaymentForm({
       );
     }
 
-    if (connectionStatus === 'disconnected') {
+    if (connectionStatus.status === 'disconnected') {
       return (
-        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-          <WifiOff className="w-4 h-4" />
-          <span>M-Pesa service is currently unavailable. Please try again later.</span>
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+            <WifiOff className="w-4 h-4" />
+            <span>M-Pesa service is currently unavailable</span>
+          </div>
+          {connectionStatus.error && (
+            <div className="text-xs text-red-500 dark:text-red-400 px-3">
+              Error: {connectionStatus.error}
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={checkConnection}
+            className="w-full"
+          >
+            <RefreshCw className="w-3 h-3 mr-2" />
+            Retry Connection
+          </Button>
         </div>
       );
     }
 
     return (
-      <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 mb-4">
-        <Wifi className="w-4 h-4" />
-        <span>M-Pesa service is connected</span>
+      <div className="flex items-center justify-between text-sm text-green-600 dark:text-green-400 mb-4 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Wifi className="w-4 h-4" />
+          <span>M-Pesa service is connected</span>
+        </div>
+        {connectionStatus.lastChecked && (
+          <span className="text-xs opacity-75">
+            Last checked: {connectionStatus.lastChecked.toLocaleTimeString()}
+          </span>
+        )}
       </div>
     );
   };
@@ -200,14 +294,18 @@ export function MpesaPaymentForm({
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={handleInitiatePayment}
-                disabled={!isValidPhoneNumber || paymentState.loading || connectionStatus === 'disconnected'}
+                disabled={!isValidPhoneNumber || paymentState.loading || connectionStatus.status === 'disconnected'}
                 loading={paymentState.loading}
                 className="w-full sm:flex-1"
                 size="lg"
               >
                 <Smartphone className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Send Payment Request</span>
-                <span className="sm:hidden">Send Request</span>
+                <span className="hidden sm:inline">
+                  {connectionStatus.status === 'disconnected' ? 'Service Unavailable' : 'Send Payment Request'}
+                </span>
+                <span className="sm:hidden">
+                  {connectionStatus.status === 'disconnected' ? 'Unavailable' : 'Send Request'}
+                </span>
               </Button>
               <Button variant="outline" onClick={handleCancel} className="w-full sm:flex-1" size="lg">
                 Cancel
@@ -280,8 +378,9 @@ export function MpesaPaymentForm({
         );
 
       case 'failed':
-        const errorMessage = paymentState.error || 'Something went wrong with your payment';
-        const isConnectionError = errorMessage.includes('connect') || errorMessage.includes('network') || connectionStatus === 'disconnected';
+        const errorMessage = paymentState.error || lastError || 'Something went wrong with your payment';
+        const isConnectionError = errorMessage.includes('connect') || errorMessage.includes('network') || connectionStatus.status === 'disconnected';
+        const canRetry = retryCount < 3;
 
         return (
           <div className="text-center space-y-4">
@@ -289,8 +388,70 @@ export function MpesaPaymentForm({
               {isConnectionError ? (
                 <WifiOff className="h-16 w-16 text-red-600" />
               ) : (
-                <X className="h-16 w-16 text-red-600" />
+                <AlertCircle className="h-16 w-16 text-red-600" />
               )}
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Payment Failed
+              </h3>
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {errorMessage}
+              </p>
+              {retryCount > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Attempt {retryCount} of 3
+                </p>
+              )}
+            </div>
+
+            {/* Error details */}
+            {lastError && lastError !== errorMessage && (
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                <p className="text-xs text-red-700 dark:text-red-300">
+                  Technical details: {lastError}
+                </p>
+              </div>
+            )}
+
+            {/* Troubleshooting tips */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-left">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-700 dark:text-blue-300">
+                  <p className="font-medium mb-1">Troubleshooting tips:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Ensure you have sufficient M-Pesa balance</li>
+                    <li>Check your phone number is correct</li>
+                    <li>Make sure you have good network connection</li>
+                    {isConnectionError && <li>Try refreshing the page</li>}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {canRetry && (
+                <Button
+                  onClick={handleRetryPayment}
+                  disabled={connectionStatus.status === 'disconnected'}
+                  className="w-full sm:flex-1"
+                  size="lg"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again ({3 - retryCount} attempts left)
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                className="w-full sm:flex-1"
+                size="lg"
+              >
+                Cancel
+              </Button>
             </div>
 
             <div>
