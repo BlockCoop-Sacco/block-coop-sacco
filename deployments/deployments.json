@@ -1,0 +1,15 @@
+{
+  "network": "bsctestnet",
+  "chainId": 97,
+  "deployer": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+  "timestamp": "2025-07-05T19:47:56.323Z",
+  "contracts": {
+    "ShareToken": "0xC826e54f0Ca0bBc163a6B39c1b4C7b069745f521",
+    "LPToken": "0x8c8ad3E9331921A65F36B8435bedd310fe59B9f2",
+    "VestingVault": "0x1701d7F4E0354Efa847159Cb3f0115cc9C3456f6",
+    "SwapTaxManager": "0xddd63Dd22EEd323B051A0da98581f3086b040A56",
+    "PackageManager": "0x0188028f8692eB01e482bc6589695272378B183c",
+    "PackageManagerV2_1": "0x7590e890010e5AbB1be7041d44F10f06D3179056",
+    "Treasury": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4"
+  }
+}

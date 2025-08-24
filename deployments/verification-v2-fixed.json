@@ -1,0 +1,44 @@
+{
+  "timestamp": "2025-07-28T20:22:21.384Z",
+  "network": "BSC Testnet",
+  "totalContracts": 7,
+  "successCount": 7,
+  "failureCount": 0,
+  "results": {
+    "SwapTaxManager": {
+      "status": "success",
+      "address": "0x8188E20075Fd048b7850436eDf624b7169c53237",
+      "verified": true
+    },
+    "BLOCKS": {
+      "status": "success",
+      "address": "0x1d1669EF234081330a78Da546F1aE744e85b551F",
+      "verified": true
+    },
+    "BLOCKS_LP": {
+      "status": "success",
+      "address": "0x9D08A478B90F84f0dF6867E0B210547E9311724F",
+      "verified": true
+    },
+    "VestingVault": {
+      "status": "success",
+      "address": "0x21CE67C04b799183c1A88342947AD6D3b4f32430",
+      "verified": true
+    },
+    "PackageManagerV2_Fixed": {
+      "status": "success",
+      "address": "0xF7075036dBd8d393B4DcF63071C3eF4abD8f31b9",
+      "verified": true
+    },
+    "DividendDistributor": {
+      "status": "success",
+      "address": "0x19C41131bE15234b6D6e8eaB2786Fc52389a142b",
+      "verified": true
+    },
+    "SecondaryMarket": {
+      "status": "success",
+      "address": "0x04a107adDD22a92Cdbd1B3D783Cc57bAb45242f4",
+      "verified": true
+    }
+  }
+}
