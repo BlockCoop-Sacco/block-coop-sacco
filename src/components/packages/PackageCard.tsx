@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-import { Package, PackageSplits, calculateSplitsWithTargetPrice } from '../../lib/contracts';
+import { PackageWithId, PackageSplits, calculateSplitsWithTargetPrice } from '../../lib/contracts';
 import { formatUSDT, formatBLOCKS, formatExchangeRate, formatPercentage, formatDuration } from '../../lib/utils';
 import { Card, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -9,8 +8,8 @@ import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { TrendingUp, Clock, Users, Percent, Loader2 } from 'lucide-react';
 
 interface PackageCardProps {
-  package: Package;
-  onPurchase: (pkg: Package) => void;
+  package: PackageWithId;
+  onPurchase: (pkg: PackageWithId) => void;
 }
 
 function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
@@ -23,6 +22,24 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
   });
   const [loading, setLoading] = useState(true);
 
+  // Debug raw package values from props
+  useEffect(() => {
+    if (pkg) {
+      console.log("📦 [DEBUG] Raw Package Data:", {
+        id: pkg.id,
+        name: pkg.name,
+        entryUSDT: formatUSDT(pkg.entryUSDT),
+        exchangeRate: formatExchangeRate(pkg.exchangeRate),
+        vestBps: pkg.vestBps,
+        cliff: pkg.cliff,
+        duration: pkg.duration,
+        referralBps: pkg.referralBps,
+        active: pkg.active,
+        exists: pkg.exists,
+      });
+    }
+  }, [pkg]);
+
   // Calculate splits with current global target price
   useEffect(() => {
     const loadSplits = async () => {
@@ -32,7 +49,6 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
         setSplits(calculatedSplits);
       } catch (error) {
         console.error('Error calculating splits for package:', pkg.name, error);
-        // Keep fallback values already set in state
       } finally {
         setLoading(false);
       }
@@ -41,9 +57,8 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
     loadSplits();
   }, [pkg]);
 
-  // Use fixed 70/30 split ratios as per new smart contract logic
-  const lpPercentage = 30; // 30% to liquidity pool
-  const vestPercentage = 70; // 70% to vesting
+  const lpPercentage = 30; 
+  const vestPercentage = 70; 
   
   return (
     <Card className="group hover:scale-[1.02] transition-all duration-300 animate-fade-in">
@@ -59,12 +74,12 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
           </div>
           <Badge variant="info">
             <TrendingUp className="w-3 h-3 mr-1" />
-            Active
+            {pkg.active ? 'Active' : 'Inactive'}
           </Badge>
         </div>
 
         <div className="space-y-4">
-          {/* Split Visualization */}
+          {/* Distribution */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
               <Percent className="w-4 h-4 mr-2" />
@@ -92,14 +107,8 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
               
               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div className="h-full flex">
-                  <div 
-                    className="bg-accent-500" 
-                    style={{ width: `${lpPercentage}%` }}
-                  />
-                  <div 
-                    className="bg-primary-500" 
-                    style={{ width: `${vestPercentage}%` }}
-                  />
+                  <div className="bg-accent-500" style={{ width: `${lpPercentage}%` }} />
+                  <div className="bg-primary-500" style={{ width: `${vestPercentage}%` }} />
                 </div>
               </div>
             </div>
@@ -132,7 +141,7 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
             </div>
           </div>
 
-          {/* Detailed Breakdown */}
+          {/* Breakdown */}
           <div className="border-t pt-4">
             {loading ? (
               <div className="flex items-center justify-center py-4">
@@ -176,7 +185,6 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
   );
 }
 
-// Export the component wrapped with error boundary
 export function PackageCard(props: PackageCardProps) {
   return (
     <ErrorBoundary

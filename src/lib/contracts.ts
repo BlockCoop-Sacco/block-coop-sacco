@@ -22,6 +22,152 @@ import { LiquidityManager, createLiquidityManager, LiquidityRemovalPreview, Slip
 
 
 
+
+
+// --- Inserted implementations for missing functions ---
+export function getPackageDataDecimals(): { usdtDecimals: number; exchangeRateDecimals: number } {
+  // For this deployment USDT and exchangeRate are both stored as 18-decimals.
+  return { usdtDecimals: 18, exchangeRateDecimals: 18 };
+}
+
+export function scaleTo18(value: bigint, fromDecimals: number): bigint {
+  const targetDecimals = 18;
+  if (fromDecimals === targetDecimals) return value;
+  if (fromDecimals < targetDecimals) {
+    return value * 10n ** BigInt(targetDecimals - fromDecimals);
+  } else {
+    return value / 10n ** BigInt(fromDecimals - targetDecimals);
+  }
+}
+
+export function safeDiv(numerator: bigint, denominator: bigint, fallback: bigint = 0n): bigint {
+  if (!denominator || denominator === 0n) {
+    return fallback;
+  }
+  return numerator / denominator;
+}
+
+export function calculateSplits(pkg: Package): PackageSplits {
+  const { entryUSDT, exchangeRate, vestBps } = pkg;
+
+  if (entryUSDT === undefined || entryUSDT === null) {
+    throw new Error('Package entryUSDT is required but undefined');
+  }
+  if (exchangeRate === undefined || exchangeRate === null) {
+    throw new Error('Package exchangeRate is required but undefined');
+  }
+  if (vestBps === undefined || vestBps === null) {
+    throw new Error('Package vestBps is required but undefined');
+  }
+
+  const entryUSDTBig = BigInt(entryUSDT);           // USDT in smallest units (18-decimals)
+  const exchangeRateBig = BigInt(exchangeRate);     // exchangeRate in 18-decimals
+  const vestBpsBig = BigInt(vestBps);
+
+  const { usdtDecimals, exchangeRateDecimals } = getPackageDataDecimals();
+
+  const entryUSDT_18 = scaleTo18(entryUSDTBig, usdtDecimals);
+  const exchangeRate_18 = scaleTo18(exchangeRateBig, exchangeRateDecimals);
+
+  if (exchangeRate_18 === 0n) {
+    console.warn('calculateSplits: exchangeRate is zero; returning fallback zeros');
+    return {
+      totalTokens: 0n,
+      vestTokens: 0n,
+      poolTokens: 0n,
+      lpTokens: 0n,
+      usdtPool: 0n,
+      usdtVault: 0n,
+    };
+  }
+
+  // totalUserTokens (BLOCKS smallest units, 18-decimals)
+  const totalUserTokens = (entryUSDT_18 * (10n ** 18n)) / exchangeRate_18;
+
+  // USDT splits (kept in USDT smallest units, 18-decimals)
+  const usdtVault = (entryUSDTBig * BigInt(vestBps)) / 10000n;
+  const usdtPool = entryUSDTBig - usdtVault;
+
+  // Token splits (18-decimals)
+  const vestTokens = (totalUserTokens * BigInt(vestBps)) / 10000n;
+  const poolTokens = totalUserTokens - vestTokens;
+
+  // Treasury allocation (example 5%)
+  const treasuryTokens = (totalUserTokens * 500n) / 10000n;
+  const totalTokens = totalUserTokens + treasuryTokens;
+
+  return {
+    totalTokens,
+    vestTokens,
+    poolTokens,
+    lpTokens: poolTokens,
+    usdtPool,
+    usdtVault,
+  };
+}
+
+export async function calculateSplitsWithTargetPrice(pkg: Package): Promise<PackageSplits> {
+  try {
+    const contracts = getContracts();
+    let globalTargetPrice: bigint;
+    try {
+      globalTargetPrice = BigInt(await contracts.packageManager.globalTargetPrice());
+    } catch (err) {
+      console.warn('Unable to read globalTargetPrice from chain, falling back to default', err);
+      globalTargetPrice = 2000000000000000000n; // 2.0 USDT/BLOCKS (18-decimals)
+    }
+
+    const { entryUSDT, exchangeRate, vestBps } = pkg;
+
+    const entryUSDTBig = BigInt(entryUSDT);
+    const exchangeRateBig = BigInt(exchangeRate);
+    const vestBpsBig = BigInt(vestBps);
+
+    const { usdtDecimals, exchangeRateDecimals } = getPackageDataDecimals();
+
+    const entryUSDT_18 = scaleTo18(entryUSDTBig, usdtDecimals);
+    const exchangeRate_18 = scaleTo18(exchangeRateBig, exchangeRateDecimals);
+
+    if (exchangeRate_18 === 0n) {
+      console.warn('calculateSplitsWithTargetPrice: exchangeRate is zero; falling back to calculateSplits');
+      return calculateSplits(pkg);
+    }
+
+    // total user BLOCKS tokens (18-decimals)
+    const totalUserTokens = (entryUSDT_18 * (10n ** 18n)) / exchangeRate_18;
+
+    // USDT pool/vault in USDT smallest units (18-decimals)
+    const usdtVault = (entryUSDTBig * vestBpsBig) / 10000n;
+    const usdtPool = entryUSDTBig - usdtVault;
+
+    // usdtPool in 18-decimals (already 18 but keep scaling for safety)
+    const usdtPool_18 = scaleTo18(usdtPool, usdtDecimals);
+
+    if (!globalTargetPrice || globalTargetPrice === 0n) {
+      console.warn('calculateSplitsWithTargetPrice: globalTargetPrice is zero/unavailable; falling back to calculateSplits');
+      return calculateSplits(pkg);
+    }
+
+    const poolTokens = (usdtPool_18 * (10n ** 18n)) / globalTargetPrice;
+    const vestTokens = totalUserTokens - poolTokens;
+
+    const treasuryTokens = (totalUserTokens * 500n) / 10000n;
+    const totalTokens = totalUserTokens + treasuryTokens;
+
+    return {
+      totalTokens,
+      vestTokens,
+      poolTokens,
+      lpTokens: poolTokens,
+      usdtPool,
+      usdtVault,
+    };
+  } catch (error) {
+    console.error('Error calculating splits with target price:', error);
+    return calculateSplits(pkg);
+  }
+}
+
 // Type definitions for contract instances (Ethers v6)
 export type PackageManagerContract = Contract;
 export type VestingVaultContract = Contract;
@@ -244,20 +390,18 @@ export function getContractsWithSigner(signer: Signer) {
   return getContracts(signer);
 }
 
-// Type definitions for package data (Ethers v6 - using bigint)
-// Note: Matches the deployed PackageManagerV2_1 smart contract Package struct exactly
 export interface Package {
-  id: number;
-  name: string;
-  entryUSDT: bigint;
-  exchangeRate: bigint;     // Exchange rate: USDT per BLOCKS for user token allocation (e.g., 2000000 = 2.0 USDT per BLOCKS)
-  vestBps: number;
-  cliff: number;
-  duration: number;
-  referralBps: number;
-  active: boolean;
-  exists: boolean;
+  entryUSDT: bigint;        // uint256
+  exchangeRate: bigint;     // uint256 (18 decimals)
+  cliff: number;            // uint64
+  duration: number;         // uint64
+  vestBps: number;          // uint16
+  referralBps: number;      // uint16
+  active: boolean;          // bool
+  exists: boolean;          // bool
+  name: string;             // string
 }
+
 
 export interface PackageSplits {
   totalTokens: bigint;
@@ -335,128 +479,6 @@ export interface SlippageProtectionTriggeredEvent {
 }
 
 // Get consistent decimal precision for package data (V2 architecture)
-function getPackageDataDecimals(): { usdtDecimals: number; exchangeRateDecimals: number } {
-  // V2 architecture uses 18 decimals consistently
-  return { usdtDecimals: 18, exchangeRateDecimals: 18 };
-}
-
-// Utility functions for package calculations (Ethers v6 - using bigint)
-// NOTE: This function matches the smart contract's dual pricing system
-// Uses exchangeRate for user token allocation calculations
-export function calculateSplits(pkg: Package): PackageSplits {
-  const { entryUSDT, exchangeRate, vestBps } = pkg;
-
-  // Debug logging (can be removed in production)
-  console.log('🔍 calculateSplits called with package:', pkg.name, {
-    entryUSDT: entryUSDT?.toString(),
-    exchangeRate: exchangeRate?.toString(),
-    vestBps: vestBps
-  });
-
-  // Validate required fields and provide meaningful error messages
-  if (entryUSDT === undefined || entryUSDT === null) {
-    console.error('calculateSplits: entryUSDT is undefined', pkg);
-    throw new Error('Package entryUSDT is required but undefined');
-  }
-
-  if (exchangeRate === undefined || exchangeRate === null) {
-    console.error('calculateSplits: exchangeRate is undefined', pkg);
-    throw new Error('Package exchangeRate is required but undefined. This may indicate a contract ABI mismatch.');
-  }
-
-  if (vestBps === undefined || vestBps === null) {
-    console.error('calculateSplits: vestBps is undefined', pkg);
-    throw new Error('Package vestBps is required but undefined');
-  }
-
-  // Ensure all values are BigInt for consistent calculations
-  const entryUSDTBig = BigInt(entryUSDT);
-  const exchangeRateBig = BigInt(exchangeRate);
-  const vestBpsBig = BigInt(vestBps);
-
-  // Use consistent decimal precision for V2 architecture
-  const { usdtDecimals, exchangeRateDecimals } = getPackageDataDecimals();
-
-  console.log('🔍 Using decimals:', { usdtDecimals, exchangeRateDecimals });
-
-  // Values are already in 18-decimal precision for V2 architecture
-  const entryUSDT18 = entryUSDTBig;
-  const exchangeRate18 = exchangeRateBig;
-
-  // Step 1: Calculate total user BLOCKS tokens based on package exchange rate
-  // Both values are now normalized to 18-decimal precision
-  const totalUserTokens = (entryUSDT18 * 1000000000000000000n) / exchangeRate18;
-
-  // Step 2: Calculate USDT allocation based on vestBps
-  const usdtPool = (entryUSDTBig * (10000n - vestBpsBig)) / 10000n;
-  const usdtVault = entryUSDTBig - usdtPool;
-
-  // Step 3: Calculate vesting and pool token allocation
-  const vestTokens = (totalUserTokens * vestBpsBig) / 10000n;
-  const poolTokens = totalUserTokens - vestTokens;
-
-  // Step 4: Calculate treasury allocation (5% of total user tokens)
-  const treasuryTokens = (totalUserTokens * 500n) / 10000n; // 5% of total user tokens
-
-  // Step 5: Calculate total tokens minted
-  const totalTokens = totalUserTokens + treasuryTokens;
-
-  return {
-    totalTokens,
-    vestTokens,
-    poolTokens,
-    lpTokens: poolTokens, // 1:1 ratio with poolTokens
-    usdtPool,
-    usdtVault,
-  };
-}
-
-// Enhanced calculation function that fetches current global target price
-export async function calculateSplitsWithTargetPrice(pkg: Package): Promise<PackageSplits> {
-  try {
-    const contracts = getContracts();
-    const globalTargetPrice = await contracts.packageManager.globalTargetPrice();
-
-    const { entryUSDT, exchangeRate, vestBps } = pkg;
-
-    // Ensure all values are BigInt for consistent calculations
-    const entryUSDTBig = BigInt(entryUSDT);
-    const exchangeRateBig = BigInt(exchangeRate);
-    const vestBpsBig = BigInt(vestBps);
-
-    // Step 1: Calculate total BLOCKS tokens user receives (based on package exchange rate)
-    const totalUserTokens = (entryUSDTBig * 1000000000000000000n) / exchangeRateBig;
-
-    // Step 2: Split USDT between vault and pool
-    const usdtVault = (entryUSDTBig * vestBpsBig) / 10000n;
-    const usdtPool = entryUSDTBig - usdtVault;
-
-    // Step 3: Calculate BLOCKS to send to LP using global target price
-    const poolTokens = (usdtPool * 1000000000000000000n) / globalTargetPrice;
-
-    // Step 4: Calculate BLOCKS to vest (remaining tokens)
-    const vestTokens = totalUserTokens - poolTokens;
-
-    // Step 5: Calculate treasury allocation (5% of total user tokens)
-    const treasuryTokens = (totalUserTokens * 500n) / 10000n;
-
-    // Step 6: Calculate total tokens minted
-    const totalTokens = totalUserTokens + treasuryTokens;
-
-    return {
-      totalTokens,
-      vestTokens,
-      poolTokens,
-      lpTokens: poolTokens, // 1:1 ratio with poolTokens
-      usdtPool,
-      usdtVault,
-    };
-  } catch (error) {
-    console.error('Error calculating splits with target price:', error);
-    // Fallback to basic calculation
-    return calculateSplits(pkg);
-  }
-}
 
 // Contract interaction helper functions
 // Note: Global exchange rate system has been removed in favor of per-package exchange rates
@@ -471,38 +493,42 @@ export async function getGlobalTargetPrice(): Promise<bigint> {
   }
 }
 
-export async function getPackageById(id: number): Promise<Package | null> {
+export type PackageWithId = Package & { id: number };
+
+export async function getPackageById(id: number): Promise<PackageWithId | null> {
   try {
     const contracts = getContracts();
-    const packageData = await contracts.packageManager.getPackage(id);
+    const p = await contracts.packageManager.getPackage(id);
 
-    return {
-      id,
-      name: packageData.name,
-      entryUSDT: packageData.entryUSDT,
-      exchangeRate: packageData.exchangeRate,
-      vestBps: Number(packageData.vestBps),
-      cliff: Number(packageData.cliff),
-      duration: Number(packageData.duration),
-      referralBps: Number(packageData.referralBps),
-      active: packageData.active,
-      exists: packageData.exists,
+    const pkg: Package = {
+      entryUSDT: p.entryUSDT,
+      exchangeRate: p.exchangeRate,
+      cliff: Number(p.cliff),
+      duration: Number(p.duration),
+      vestBps: Number(p.vestBps),
+      referralBps: Number(p.referralBps),
+      active: p.active,
+      exists: p.exists,
+      name: p.name,
     };
+
+    // attach id separately
+    return { ...pkg, id };
   } catch (error) {
     console.error('Error fetching package:', error);
     return null;
   }
 }
 
-export async function getAllPackages(): Promise<Package[]> {
+
+export async function getAllPackages(): Promise<PackageWithId[]> {
   try {
     const contracts = getContracts();
 
-    // Get package count and generate IDs
     const packageCount = await contracts.packageManager.nextPackageId();
     const packageIds = Array.from({ length: Number(packageCount) }, (_, i) => i);
 
-    const packages: Package[] = [];
+    const packages: PackageWithId[] = [];
 
     for (const id of packageIds) {
       const pkg = await getPackageById(Number(id));

@@ -51,21 +51,26 @@ export function formatUSDT(value: bigint | string): string {
   }
 }
 
-// Get exchange rate decimals (consistent with V2 architecture)
 function getExchangeRateDecimals(): number {
-  // V2 architecture uses 18 decimals consistently
-  return 18;
+  // If your contract really stores exchangeRate in "raw seconds" (like 31536000), 
+  // use 0 decimals. If it stores 18-decimal scaled values, use 18.
+  const envDecimals = import.meta.env?.VITE_EXCHANGE_RATE_DECIMALS;
+  if (envDecimals) {
+    const d = parseInt(envDecimals);
+    if (!isNaN(d)) return d;
+  }
+  return 18; // fallback
 }
 
 export function formatExchangeRate(value: bigint | string): string {
   try {
     const bigintValue = typeof value === 'string' ? BigInt(value) : value;
 
-    // Use consistent decimal precision for V2 architecture
     const decimals = getExchangeRateDecimals();
 
     const formatted = ethers.formatUnits(bigintValue, decimals);
     const num = parseFloat(formatted);
+
     return num.toLocaleString('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 6,
@@ -74,6 +79,7 @@ export function formatExchangeRate(value: bigint | string): string {
     return '0';
   }
 }
+
 
 export function formatBLOCKS(value: bigint | string): string {
   try {
