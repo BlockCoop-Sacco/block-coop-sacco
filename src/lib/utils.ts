@@ -52,30 +52,29 @@ export function formatUSDT(value: bigint | string): string {
 }
 
 function getExchangeRateDecimals(): number {
-  // If your contract really stores exchangeRate in "raw seconds" (like 31536000), 
-  // use 0 decimals. If it stores 18-decimal scaled values, use 18.
+  // Exchange rate is stored as USDT per BLOCKS in 18 decimals
+  // For example: 2.0 USDT per BLOCKS = 2000000000000000000 (18 decimals)
   const envDecimals = import.meta.env?.VITE_EXCHANGE_RATE_DECIMALS;
   if (envDecimals) {
     const d = parseInt(envDecimals);
     if (!isNaN(d)) return d;
   }
-  return 18; // fallback
+  return 18; // Default to 18 decimals for V2 architecture
 }
 
 export function formatExchangeRate(value: bigint | string): string {
   try {
     const bigintValue = typeof value === 'string' ? BigInt(value) : value;
-
-    const decimals = getExchangeRateDecimals();
-
-    const formatted = ethers.formatUnits(bigintValue, decimals);
-    const num = parseFloat(formatted);
-
-    return num.toLocaleString('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 6,
+    
+    // Simple approach: divide by 10^18 and format
+    const decimalValue = Number(bigintValue) / 1e18;
+    
+    return decimalValue.toLocaleString('en-US', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 2,
     });
-  } catch {
+  } catch (error) {
+    console.error('formatExchangeRate error:', error);
     return '0';
   }
 }
@@ -112,7 +111,7 @@ export function formatDuration(seconds: number): string {
 }
 
 export function formatPercentage(bps: number): string {
-  return `${(bps / 100).toFixed(1)}%`;
+  return `${(bps / 10000 * 100).toFixed(1)}%`;
 }
 
 export function parseEther(value: string): bigint {

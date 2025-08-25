@@ -41,16 +41,17 @@ export function PackagesPage() {
         // Handle both array and object formats (same as PackageList)
         let packageData;
         if (Array.isArray(pkg)) {
+          // Map according to contract struct: { entryUSDT, exchangeRate, cliff, duration, vestBps, referralBps, active, exists, name }
           packageData = {
-            name: pkg[0],
-            entryUSDT: pkg[1],
-            exchangeRate: pkg[2],
-            vestBps: pkg[3],
-            cliff: pkg[4],
-            duration: pkg[5],
-            referralBps: pkg[6],
-            active: pkg[7],
-            exists: pkg[8]
+            entryUSDT: pkg[0],
+            exchangeRate: pkg[1],
+            cliff: pkg[2],
+            duration: pkg[3],
+            vestBps: pkg[4],
+            referralBps: pkg[5],
+            active: pkg[6],
+            exists: pkg[7],
+            name: pkg[8]
           };
         } else {
           packageData = {

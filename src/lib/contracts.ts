@@ -66,8 +66,10 @@ export function calculateSplits(pkg: Package): PackageSplits {
 
   const { usdtDecimals, exchangeRateDecimals } = getPackageDataDecimals();
 
-  const entryUSDT_18 = scaleTo18(entryUSDTBig, usdtDecimals);
-  const exchangeRate_18 = scaleTo18(exchangeRateBig, exchangeRateDecimals);
+  // USDT is already in 18 decimals, so no scaling needed
+  const entryUSDT_18 = entryUSDTBig;
+  // Exchange rate is already in 18 decimals, so no scaling needed
+  const exchangeRate_18 = exchangeRateBig;
 
   if (exchangeRate_18 === 0n) {
     console.warn('calculateSplits: exchangeRate is zero; returning fallback zeros');
@@ -81,18 +83,18 @@ export function calculateSplits(pkg: Package): PackageSplits {
     };
   }
 
-  // totalUserTokens (BLOCKS smallest units, 18-decimals)
+  // Calculate total BLOCKS tokens user receives (18-decimals)
   const totalUserTokens = (entryUSDT_18 * (10n ** 18n)) / exchangeRate_18;
 
-  // USDT splits (kept in USDT smallest units, 18-decimals)
-  const usdtVault = (entryUSDTBig * BigInt(vestBps)) / 10000n;
+  // USDT splits (using vestBps for treasury percentage)
+  const usdtVault = (entryUSDTBig * vestBpsBig) / 10000n;
   const usdtPool = entryUSDTBig - usdtVault;
 
-  // Token splits (18-decimals)
-  const vestTokens = (totalUserTokens * BigInt(vestBps)) / 10000n;
+  // Token splits (18-decimals) - proportional to USDT allocation
+  const vestTokens = (totalUserTokens * vestBpsBig) / 10000n;
   const poolTokens = totalUserTokens - vestTokens;
 
-  // Treasury allocation (example 5%)
+  // Treasury allocation (5% of total tokens)
   const treasuryTokens = (totalUserTokens * 500n) / 10000n;
   const totalTokens = totalUserTokens + treasuryTokens;
 
@@ -125,34 +127,39 @@ export async function calculateSplitsWithTargetPrice(pkg: Package): Promise<Pack
 
     const { usdtDecimals, exchangeRateDecimals } = getPackageDataDecimals();
 
-    const entryUSDT_18 = scaleTo18(entryUSDTBig, usdtDecimals);
-    const exchangeRate_18 = scaleTo18(exchangeRateBig, exchangeRateDecimals);
+    // USDT is already in 18 decimals, so no scaling needed
+    const entryUSDT_18 = entryUSDTBig;
+    // Exchange rate is already in 18 decimals, so no scaling needed
+    const exchangeRate_18 = exchangeRateBig;
+
+
 
     if (exchangeRate_18 === 0n) {
       console.warn('calculateSplitsWithTargetPrice: exchangeRate is zero; falling back to calculateSplits');
       return calculateSplits(pkg);
     }
 
-    // total user BLOCKS tokens (18-decimals)
+    // Calculate total BLOCKS tokens user receives (18-decimals)
+    // exchangeRate is USDT per BLOCKS, so BLOCKS = USDT / exchangeRate
     const totalUserTokens = (entryUSDT_18 * (10n ** 18n)) / exchangeRate_18;
 
-    // USDT pool/vault in USDT smallest units (18-decimals)
+    // USDT splits (using vestBps for treasury percentage)
     const usdtVault = (entryUSDTBig * vestBpsBig) / 10000n;
     const usdtPool = entryUSDTBig - usdtVault;
 
-    // usdtPool in 18-decimals (already 18 but keep scaling for safety)
-    const usdtPool_18 = scaleTo18(usdtPool, usdtDecimals);
-
-    if (!globalTargetPrice || globalTargetPrice === 0n) {
-      console.warn('calculateSplitsWithTargetPrice: globalTargetPrice is zero/unavailable; falling back to calculateSplits');
-      return calculateSplits(pkg);
-    }
-
-    const poolTokens = (usdtPool_18 * (10n ** 18n)) / globalTargetPrice;
+    // Token splits based on USDT allocation
+    // Calculate LP tokens using the package exchange rate (not global target price)
+    // USDT pool is already in 18 decimals, so no scaling needed
+    const poolTokens = (usdtPool * (10n ** 18n)) / exchangeRate_18;
+    
+    // Vest tokens = remaining tokens
     const vestTokens = totalUserTokens - poolTokens;
 
+    // Treasury allocation (5% of total tokens)
     const treasuryTokens = (totalUserTokens * 500n) / 10000n;
     const totalTokens = totalUserTokens + treasuryTokens;
+
+
 
     return {
       totalTokens,

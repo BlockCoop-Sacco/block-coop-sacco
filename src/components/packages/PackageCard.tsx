@@ -57,8 +57,8 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
     loadSplits();
   }, [pkg]);
 
-  const lpPercentage = 30; 
-  const vestPercentage = 70; 
+  const lpPercentage = 100 - (pkg.vestBps / 10000 * 100); // Convert basis points to percentage
+  const vestPercentage = pkg.vestBps / 10000 * 100; // Convert basis points to percentage 
   
   return (
     <Card className="group hover:scale-[1.02] transition-all duration-300 animate-fade-in">
