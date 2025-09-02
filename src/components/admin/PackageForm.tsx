@@ -270,8 +270,8 @@ export function PackageForm({ package: pkg, isOpen, onClose, onSuccess }: Packag
 
       // Validate exchange rate
       const exchangeRate = parseFloat(formData.exchangeRate || '0');
-      if (isNaN(exchangeRate) || exchangeRate <= 0 || exchangeRate > 1) {
-        throw new Error('Exchange rate must be between 0 and 1 (e.g., 0.5 for 0.5 BLOCKS per 1 USDT)');
+      if (isNaN(exchangeRate) || exchangeRate < 0.01) {
+        throw new Error('Exchange rate must be at least 0.01 USDT per 1 BLOCKS');
       }
 
       // Validate vest percentage
