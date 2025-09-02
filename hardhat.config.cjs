@@ -29,8 +29,8 @@ module.exports = {
       chainId: 56,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       timeout: 60000,        // 60 seconds timeout
-      gasPrice: 2000000000,  // 5 gwei (lower for mainnet)
-      gas: 8000000,          // 8M gas limit
+      gasPrice: 1000000000,  // 1 gwei (very low for mainnet)
+      gas: 4000000,          // 4M gas limit (optimized)
       blockGasLimit: 30000000, // 30M block gas limit
       allowUnlimitedContractSize: true,
       httpHeaders: {

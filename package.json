@@ -15,7 +15,8 @@
     "test:watch": "vitest --watch",
     "test:dex": "node scripts/test-dex.js",
     "deploy:pm-per-package": "npx hardhat run scripts/deploy-pm-per-package-rates.cjs --network bsctestnet",
-    "test:per-package-rates": "npx hardhat run scripts/test-per-package-rates.cjs --network bsctestnet"
+    "test:per-package-rates": "npx hardhat run scripts/test-per-package-rates.cjs --network bsctestnet",
+    "deploy:cpanel": "./scripts/prepare-cpanel-deployment.sh"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
