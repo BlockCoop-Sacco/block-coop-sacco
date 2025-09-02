@@ -8,7 +8,7 @@ class MpesaService {
     this.consumerSecret = process.env.MPESA_CONSUMER_SECRET;
     this.businessShortCode = process.env.MPESA_BUSINESS_SHORT_CODE;
     this.passkey = process.env.MPESA_PASSKEY;
-    this.baseUrl = process.env.MPESA_BASE_URL || 'https://sandbox.safaricom.co.ke';
+    this.baseUrl = process.env.MPESA_BASE_URL;
     this.callbackUrl = process.env.MPESA_CALLBACK_URL || `${process.env.CALLBACK_BASE_URL}/api/mpesa/callback`;
     this.timeoutUrl = process.env.MPESA_TIMEOUT_URL || `${process.env.CALLBACK_BASE_URL}/api/mpesa/timeout`;
 
@@ -98,7 +98,7 @@ class MpesaService {
         PartyA: phoneNumber,
         PartyB: this.businessShortCode,
         PhoneNumber: phoneNumber,
-        CallBackURL: this.callbackUrl,
+        CallBackURL: 'https://api.blockcoopsacco.com/api/mpesa/callback',
         AccountReference: `PKG${packageId}-${transaction.id}`,
         TransactionDesc: `BlockCoop Package ${packageId} Purchase`
       };

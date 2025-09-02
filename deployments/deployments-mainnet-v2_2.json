@@ -9,5 +9,7 @@
   "vestingVault": "0x662c77598491e91174506a4C1e7990825c3d7abA",
   "packageManager": "0x50a837529B045c3f679cd14De2252515dF803F7e",
   "treasury": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
-  "timestamp": 1755801296775
+  "timestamp": 1755801296775,
+  "secondaryMarket": "0x02D855F16695f7937da07aA8E4bAB7298548650E",
+  "lastUpdated": 1756756174843
 }
