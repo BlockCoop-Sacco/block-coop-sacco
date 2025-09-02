@@ -9,7 +9,7 @@ import { Badge } from '../../components/ui/Badge';
 import { PackageForm } from '../../components/admin/PackageForm';
 import { GlobalTargetPriceManager } from '../../components/admin/GlobalTargetPriceManager';
 
-import { Plus, Edit, Trash2, Package as PackageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Package as PackageIcon, Play, Pause } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function PackagesPage() {
@@ -18,6 +18,7 @@ export function PackagesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [togglingPackage, setTogglingPackage] = useState<number | null>(null);
 
   useEffect(() => {
     loadPackages();
@@ -96,6 +97,30 @@ export function PackagesPage() {
     setShowForm(true);
   };
 
+  const handleTogglePackage = async (pkg: Package) => {
+    if (!contracts.packageManager) {
+      toast.error('Package manager contract not available');
+      return;
+    }
+
+    try {
+      setTogglingPackage(pkg.id);
+      const signer = await getSigner();
+      const contract = contracts.packageManager.connect(signer);
+      
+      const tx = await contract.togglePackage(pkg.id);
+      await tx.wait();
+      
+      toast.success(`Package "${pkg.name}" ${pkg.active ? 'paused' : 'activated'} successfully!`);
+      loadPackages(); // Refresh the packages list
+    } catch (error) {
+      console.error('Error toggling package:', error);
+      toast.error(`Failed to ${pkg.active ? 'pause' : 'activate'} package "${pkg.name}"`);
+    } finally {
+      setTogglingPackage(null);
+    }
+  };
+
   const handleFormSuccess = () => {
     setShowForm(false);
     setEditingPackage(null);
@@ -169,7 +194,8 @@ export function PackagesPage() {
       ) : (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Active Packages</h3>
+            <h3 className="text-lg font-semibold text-gray-900">All Packages</h3>
+            <p className="text-sm text-gray-600">Manage all packages including active and inactive ones</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -177,6 +203,7 @@ export function PackagesPage() {
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry Cost</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vest %</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
@@ -186,22 +213,27 @@ export function PackagesPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {packages.map((pkg) => (
-                    <tr key={pkg.id} className="hover:bg-gray-50">
+                    <tr key={pkg.id} className={`hover:bg-gray-50 ${!pkg.active ? 'bg-gray-50' : ''}`}>
                       <td className="px-6 py-4">
                         <div>
-                          <div className="font-medium text-gray-900">{pkg.name}</div>
+                          <div className={`font-medium ${!pkg.active ? 'text-gray-500' : 'text-gray-900'}`}>{pkg.name}</div>
                           <div className="text-sm text-gray-500">ID: {pkg.id}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-medium">${formatUSDT(pkg.entryUSDT)}</span>
+                        <Badge variant={pkg.active ? "success" : "default"}>
+                          {pkg.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`font-medium ${!pkg.active ? 'text-gray-500' : ''}`}>${formatUSDT(pkg.entryUSDT)}</span>
                         <div className="text-sm text-gray-500">USDT</div>
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant="info">{formatPercentage(pkg.vestBps)}</Badge>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm">{formatDuration(pkg.duration)}</span>
+                        <span className={`text-sm ${!pkg.active ? 'text-gray-500' : ''}`}>{formatDuration(pkg.duration)}</span>
                         {pkg.cliff > 0 && (
                           <div className="text-xs text-gray-500">
                             Cliff: {formatDuration(pkg.cliff)}
@@ -213,6 +245,22 @@ export function PackagesPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end space-x-2">
+                          <Button
+                            variant={pkg.active ? "outline" : "default"}
+                            size="sm"
+                            onClick={() => handleTogglePackage(pkg)}
+                            disabled={togglingPackage === pkg.id}
+                            className={pkg.active ? "text-orange-600 border-orange-600 hover:bg-orange-50" : "text-green-600 bg-green-600 hover:bg-green-700"}
+                          >
+                            {togglingPackage === pkg.id ? (
+                              <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full" />
+                            ) : pkg.active ? (
+                              <Pause className="h-3 w-3" />
+                            ) : (
+                              <Play className="h-3 w-3" />
+                            )}
+                            {pkg.active ? 'Pause' : 'Activate'}
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

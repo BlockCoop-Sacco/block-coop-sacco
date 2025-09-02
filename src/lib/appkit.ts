@@ -99,6 +99,7 @@ export const appKitConfig: AppKitConfig = {
     factory: getEnvVar('VITE_FACTORY_ADDRESS', true),
     packageManager: getEnvVar('VITE_PACKAGE_MANAGER_ADDRESS', true),
     staking: stakingAddress,
+    secondaryMarket: getEnvVar('VITE_SECONDARY_MARKET_ADDRESS', false),
   },
   network: getCurrentNetworkConfig(),
 };

@@ -8,6 +8,7 @@ import {
 describe('adminConfig', () => {
   const primaryAdmin = '0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4';
   const additionalAdmin = '0x6F6782148F208F9547f68e2354B1d7d2d4BeF987';
+  const newAdmin = '0x0A1956562aB097cC90f3D1b005Ce50F2c90B80d8';
   const unauthorizedAddress = '0x1234567890123456789012345678901234567890';
 
   describe('isAuthorizedAdmin', () => {
@@ -17,6 +18,10 @@ describe('adminConfig', () => {
 
     it('should return true for additional admin address', () => {
       expect(isAuthorizedAdmin(additionalAdmin)).toBe(true);
+    });
+
+    it('should return true for new admin address', () => {
+      expect(isAuthorizedAdmin(newAdmin)).toBe(true);
     });
 
     it('should return true for admin addresses in different case', () => {
@@ -39,6 +44,7 @@ describe('adminConfig', () => {
     it('should return true when connected with authorized admin address', () => {
       expect(shouldShowAdminFeatures(primaryAdmin, true)).toBe(true);
       expect(shouldShowAdminFeatures(additionalAdmin, true)).toBe(true);
+      expect(shouldShowAdminFeatures(newAdmin, true)).toBe(true);
     });
 
     it('should return false when not connected', () => {
@@ -65,7 +71,8 @@ describe('adminConfig', () => {
       const addresses = getAuthorizedAdminAddresses();
       expect(addresses).toContain(primaryAdmin);
       expect(addresses).toContain(additionalAdmin);
-      expect(addresses).toHaveLength(2);
+      expect(addresses).toContain(newAdmin);
+      expect(addresses).toHaveLength(3);
     });
   });
 });
