@@ -279,8 +279,11 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
       }
     }
 
-    // Mint synthetic LP equal to real AMM LP tokens received
-    uint256 lpTokensMinted = liquidity;
+    // MODIFIED: Mint BLOCKS-LP tokens equal to total user tokens (1:1 ratio)
+    // This ensures users receive equal amounts of BLOCKS and BLOCKS-LP tokens
+    // Note: The liquidity pool still receives the calculated pool tokens based on the split,
+    // but users get LP tokens equal to their total token allocation for redemption purposes
+    uint256 lpTokensMinted = totalUserTokens;
     if (lpTokensMinted > 0) {
       lpToken.mint(buyer, lpTokensMinted);
     }
@@ -301,7 +304,9 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
       }
     }
 
-    _updateUserPurchaseData(buyer, id, pkg.entryUSDT, totalUserTokens, vestTokens, poolTokens, lpTokensMinted, referrer, referralReward);
+    // FIXED: Update buyer's purchase data with 0 referral reward (they didn't earn any)
+    // Referrer's stats are updated above when they receive the actual reward
+    _updateUserPurchaseData(buyer, id, pkg.entryUSDT, totalUserTokens, vestTokens, poolTokens, lpTokensMinted, referrer, 0);
 
     emit Purchased(buyer, id, pkg.entryUSDT, totalUserTokens, vestTokens, poolTokens, lpTokensMinted, referrer, referralReward);
   }
