@@ -8,7 +8,8 @@
 // Authorized admin wallet addresses
 export const AUTHORIZED_ADMIN_ADDRESSES = [
   '0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4', // Primary Admin (Deployer)
-  '0x6F6782148F208F9547f68e2354B1d7d2d4BeF987', // Additional Admin (Client Request)
+  '0xfF81cBA6Da71c50cC3123b277e612C95895ABC67', // Additional Admin (Client Request)
+  '0x0A1956562aB097cC90f3D1b005Ce50F2c90B80d8', // New Admin (BlockCoop Sacco Management)
 ];
 
 /**
