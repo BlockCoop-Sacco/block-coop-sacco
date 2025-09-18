@@ -1,5 +1,6 @@
 import { sequelize } from './connection.js';
 import { MpesaTransaction } from '../models/MpesaTransaction.js';
+import { GaslessTransaction } from '../models/GaslessTransaction.js';
 import { logger } from '../utils/logger.js';
 
 export async function initializeDatabase() {

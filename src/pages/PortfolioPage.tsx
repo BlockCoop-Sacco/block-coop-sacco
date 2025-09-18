@@ -5,11 +5,11 @@ import { Badge } from '../components/ui/Badge';
 import { Wallet, TrendingUp, Clock, ExternalLink, Loader2, Package, DollarSign, AlertCircle, RefreshCw, Info, Users, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWeb3 } from '../providers/Web3Provider';
-import { useEnhancedBalances, useVesting, useCorrectedVesting, usePurchaseHistory, useUserPortfolioStats, useCorrectedPortfolioStats } from '../hooks/useContracts';
+import { useEnhancedBalances, useVesting, useCorrectedVesting, usePurchaseHistory, useUserPortfolioStats, useCorrectedPortfolioStats, useCurrentMarketPrice } from '../hooks/useContracts';
 import { useReferral } from '../hooks/useReferral';
 import { appKitConfig, getPancakeSwapUrl } from '../lib/appkit';
 import { useRefreshContext } from '../contexts/RefreshContext';
-import { formatTokenAmount } from '../lib/contracts';
+import { formatTokenAmount, getLiquidityAddedEvents } from '../lib/contracts';
 
 export function PortfolioPage() {
   const { isConnected, account, isCorrectNetwork, switchToCorrectNetwork } = useWeb3();
@@ -19,8 +19,51 @@ export function PortfolioPage() {
   const { formattedStats, loading: statsLoading, error: statsError, refetch: refetchStats } = useUserPortfolioStats();
   const { referralStats, formattedStats: formattedReferralStats, loading: referralLoading } = useReferral();
   const { formattedCorrectedStats, correctionNotice, loading: correctedStatsLoading } = useCorrectedPortfolioStats();
+  const { marketPrice, loading: marketPriceLoading } = useCurrentMarketPrice();
   const { refreshAll } = useRefreshContext();
   const [claiming, setClaiming] = useState(false);
+  const [ammEvents, setAmmEvents] = useState<Array<{
+    user: string;
+    packageId: bigint;
+    shareTokenAmount: bigint;
+    usdtAmount: bigint;
+    liquidityTokens: bigint;
+    actualShareToken: bigint;
+    actualUSDT: bigint;
+    blockNumber: number;
+    transactionHash: string;
+    timestamp: number;
+  }>>([]);
+
+  useEffect(() => {
+    const loadAmmEvents = async () => {
+      try {
+        if (!account) return;
+        const events = await getLiquidityAddedEvents(account);
+        setAmmEvents(events || []);
+      } catch (err) {
+        console.warn('Failed to load AMM liquidity events:', err);
+        setAmmEvents([]);
+      }
+    };
+    loadAmmEvents();
+  }, [account]);
+
+  const findNearestAmmEvent = (pkgId: number, tsSeconds: number) => {
+    if (!ammEvents || ammEvents.length === 0) return null;
+    const windowSec = 600; // 10 minutes matching window
+    let best: any = null;
+    let bestDiff = Infinity;
+    for (const ev of ammEvents) {
+      if (Number(ev.packageId) !== pkgId) continue;
+      const diff = Math.abs((ev.timestamp || 0) - (tsSeconds || 0));
+      if (diff < bestDiff) {
+        best = ev;
+        bestDiff = diff;
+      }
+    }
+    return best && bestDiff <= windowSec ? best : null;
+  };
 
   const handleClaimVested = async () => {
     if (!isConnected || !isCorrectNetwork) {
@@ -265,6 +308,21 @@ export function PortfolioPage() {
                 </div>
               )}
 
+              {/* Market Price Information */}
+              {marketPrice && (
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg mb-4">
+                  <div className="text-center">
+                    <p className="text-sm text-blue-600">Current BLOCKS Price</p>
+                    <p className="text-2xl font-bold text-blue-700">
+                      ${formatTokenAmount(marketPrice, 18, 4)}
+                    </p>
+                    <div className="mt-2 text-xs text-gray-600">
+                      Price determined by AMM mechanics on PancakeSwap
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Performance Metrics */}
               {formattedSummary.purchaseCount > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -273,7 +331,9 @@ export function PortfolioPage() {
                     <p className={`text-lg font-semibold ${formattedSummary.roi >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       {formattedSummary.roi >= 0 ? '+' : ''}{formattedSummary.roi.toFixed(2)}%
                     </p>
-                    <p className="text-xs text-indigo-500 mt-1">Based on tokens received</p>
+                    <p className="text-xs text-indigo-500 mt-1">
+                      {marketPrice ? `Based on current price: $${formatTokenAmount(marketPrice, 18, 4)}` : 'Based on current market price'}
+                    </p>
                   </div>
                   <div className="bg-gradient-to-r from-teal-50 to-green-50 p-4 rounded-lg">
                     <p className="text-sm text-teal-600">Vesting Tokens</p>
@@ -520,8 +580,28 @@ export function PortfolioPage() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mt-2">
                         <div>
-                          <p className="text-gray-600">Pool Tokens</p>
+                          <p className="text-gray-600">Pool Tokens (allocation)</p>
                           <p className="font-semibold">{formatTokenAmount(purchase.poolTokens, 18, 4)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">AMM Pool Tokens (actual)</p>
+                          <p className="font-semibold">
+                            {(() => {
+                              const match = findNearestAmmEvent(Number(purchase.packageId), Number(purchase.timestamp));
+                              return match ? formatTokenAmount(match.actualShareToken, 18, 4) : '—';
+                            })()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Effective Vesting (est.)</p>
+                          <p className="font-semibold">
+                            {(() => {
+                              const match = findNearestAmmEvent(Number(purchase.packageId), Number(purchase.timestamp));
+                              if (!match) return '—';
+                              const effective = (purchase.totalTokens || 0n) - (match.actualShareToken || 0n);
+                              return formatTokenAmount(effective, 18, 4);
+                            })()}
+                          </p>
                         </div>
                         <div>
                           <p className="text-gray-600">BLOCKS-LP</p>

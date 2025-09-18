@@ -16,7 +16,10 @@
     "test:dex": "node scripts/test-dex.js",
     "deploy:pm-per-package": "npx hardhat run scripts/deploy-pm-per-package-rates.cjs --network bsctestnet",
     "test:per-package-rates": "npx hardhat run scripts/test-per-package-rates.cjs --network bsctestnet",
-    "deploy:cpanel": "./scripts/prepare-cpanel-deployment.sh"
+    "deploy:cpanel": "./scripts/prepare-cpanel-deployment.sh",
+    "deploy:pm-proxy": "npx hardhat run scripts/deploy-package-manager-proxy.cjs --network bsctestnet",
+    "setup:pm-roles": "npx hardhat run scripts/setup-package-manager-roles.cjs --network bsctestnet",
+    "upgrade:pm-proxy": "npx hardhat run scripts/upgrade-package-manager.cjs --network bsctestnet"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
@@ -58,6 +61,8 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "hardhat": "^2.25.0",
+    "@openzeppelin/hardhat-upgrades": "^3.7.0",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "jest-junit": "^16.0.0",
     "jsdom": "^26.1.0",
     "msw": "^2.10.4",

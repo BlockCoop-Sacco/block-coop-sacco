@@ -10,7 +10,7 @@ import lpTokenAbi from '../abi/BLOCKS_LP.json';
 import erc20Abi from '../abi/ERC20.json';
 import pancakeRouterAbi from '../abi/IPancakeRouter.json';
 import pancakeFactoryAbi from '../abi/IPancakeFactory.json';
-import pancakePairAbi from '../abi/IPancakePair.json';
+// import pancakePairAbi from '../abi/IPancakePair.json'; // Unused
 
 // V2 Contract ABIs
 import dividendDistributorAbi from '../abi/DividendDistributor.json';
@@ -18,7 +18,7 @@ import secondaryMarketAbi from '../abi/SecondaryMarket.json';
 import stakingAbi from '../abi/BLOCKSStakingV2.json';
 
 // Import liquidity management utilities
-import { LiquidityManager, createLiquidityManager, LiquidityRemovalPreview, SlippageConfig, MEVProtection } from './liquidityManager';
+import { /* LiquidityManager, */ createLiquidityManager, LiquidityRemovalPreview, SlippageConfig, MEVProtection } from './liquidityManager';
 
 
 
@@ -48,7 +48,7 @@ export function safeDiv(numerator: bigint, denominator: bigint, fallback: bigint
 }
 
 export function calculateSplits(pkg: Package): PackageSplits {
-  const { entryUSDT, exchangeRate, vestBps } = pkg;
+  const { entryUSDT, exchangeRate } = pkg;
 
   if (entryUSDT === undefined || entryUSDT === null) {
     throw new Error('Package entryUSDT is required but undefined');
@@ -56,50 +56,26 @@ export function calculateSplits(pkg: Package): PackageSplits {
   if (exchangeRate === undefined || exchangeRate === null) {
     throw new Error('Package exchangeRate is required but undefined');
   }
-  if (vestBps === undefined || vestBps === null) {
-    throw new Error('Package vestBps is required but undefined');
-  }
 
-  const entryUSDTBig = BigInt(entryUSDT);           // USDT in smallest units (18-decimals)
-  const exchangeRateBig = BigInt(exchangeRate);     // exchangeRate in 18-decimals
-  const vestBpsBig = BigInt(vestBps);
+  const entryUSDTBig = BigInt(entryUSDT);           // 18-decimals
+  const exchangeRateBig = BigInt(exchangeRate);     // 18-decimals (USDT per BLOCKS)
 
-  const { usdtDecimals, exchangeRateDecimals } = getPackageDataDecimals();
+  // Default fallback split when on-chain reads are unavailable: 30% liquidity / 70% treasury
+  const liquidityBps = 3000n;
 
-  // USDT is already in 18 decimals, so no scaling needed
-  const entryUSDT_18 = entryUSDTBig;
-  // Exchange rate is already in 18 decimals, so no scaling needed
-  const exchangeRate_18 = exchangeRateBig;
+  // Calculate total BLOCKS user receives from package exchange rate
+  const totalUserTokens = exchangeRateBig === 0n ? 0n : (entryUSDTBig * (10n ** 18n)) / exchangeRateBig;
 
-  if (exchangeRate_18 === 0n) {
-    console.warn('calculateSplits: exchangeRate is zero; returning fallback zeros');
-    return {
-      totalTokens: 0n,
-      vestTokens: 0n,
-      poolTokens: 0n,
-      lpTokens: 0n,
-      usdtPool: 0n,
-      usdtVault: 0n,
-    };
-  }
+  // USDT split
+  const usdtPool = (entryUSDTBig * liquidityBps) / 10000n;
+  const usdtVault = entryUSDTBig - usdtPool;
 
-  // Calculate total BLOCKS tokens user receives (18-decimals)
-  const totalUserTokens = (entryUSDT_18 * (10n ** 18n)) / exchangeRate_18;
-
-  // USDT splits (using vestBps for treasury percentage)
-  const usdtVault = (entryUSDTBig * vestBpsBig) / 10000n;
-  const usdtPool = entryUSDTBig - usdtVault;
-
-  // Token splits (18-decimals) - proportional to USDT allocation
-  const vestTokens = (totalUserTokens * vestBpsBig) / 10000n;
-  const poolTokens = totalUserTokens - vestTokens;
-
-  // Treasury allocation (5% of total tokens)
-  const treasuryTokens = (totalUserTokens * 500n) / 10000n;
-  const totalTokens = totalUserTokens + treasuryTokens;
+  // Approximate token split proportional to USDT split (final values should use calculateSplitsWithTargetPrice)
+  const poolTokens = (totalUserTokens * liquidityBps) / 10000n;
+  const vestTokens = totalUserTokens - poolTokens;
 
   return {
-    totalTokens,
+    totalTokens: totalUserTokens,
     vestTokens,
     poolTokens,
     lpTokens: poolTokens,
@@ -111,58 +87,57 @@ export function calculateSplits(pkg: Package): PackageSplits {
 export async function calculateSplitsWithTargetPrice(pkg: Package): Promise<PackageSplits> {
   try {
     const contracts = getContracts();
+    // Read global target price
     let globalTargetPrice: bigint;
     try {
       globalTargetPrice = BigInt(await contracts.packageManager.globalTargetPrice());
     } catch (err) {
-      console.warn('Unable to read globalTargetPrice from chain, falling back to default', err);
-      globalTargetPrice = 2000000000000000000n; // 2.0 USDT/BLOCKS (18-decimals)
+      console.warn('Unable to read globalTargetPrice from chain, using 1.0 fallback', err);
+      globalTargetPrice = 1000000000000000000n; // 1.0 USDT/BLOCKS (18-decimals)
     }
 
-    const { entryUSDT, exchangeRate, vestBps } = pkg;
-
-    const entryUSDTBig = BigInt(entryUSDT);
-    const exchangeRateBig = BigInt(exchangeRate);
-    const vestBpsBig = BigInt(vestBps);
-
-    const { usdtDecimals, exchangeRateDecimals } = getPackageDataDecimals();
-
-    // USDT is already in 18 decimals, so no scaling needed
-    const entryUSDT_18 = entryUSDTBig;
-    // Exchange rate is already in 18 decimals, so no scaling needed
-    const exchangeRate_18 = exchangeRateBig;
-
-
-
-    if (exchangeRate_18 === 0n) {
-      console.warn('calculateSplitsWithTargetPrice: exchangeRate is zero; falling back to calculateSplits');
-      return calculateSplits(pkg);
+    // Read liquidityBps (fallback 3000 if not available in ABI)
+    let liquidityBps: bigint = 3000n;
+    try {
+      liquidityBps = BigInt(await contracts.packageManager.liquidityBps());
+    } catch (err) {
+      console.warn('Unable to read liquidityBps; defaulting to 30%', err);
     }
 
-    // Calculate total BLOCKS tokens user receives (18-decimals)
-    // exchangeRate is USDT per BLOCKS, so BLOCKS = USDT / exchangeRate
-    const totalUserTokens = (entryUSDT_18 * (10n ** 18n)) / exchangeRate_18;
+    // Read market price with fallback to target
+    let priceToUse: bigint = globalTargetPrice;
+    try {
+      const res = await contracts.packageManager.getCurrentMarketPrice();
+      // Ethers v6: tuple as array [marketPrice, hasLiquidity]
+      const marketPrice = BigInt(res[0]);
+      const hasLiquidity = Boolean(res[1]);
+      priceToUse = hasLiquidity && marketPrice > 0n ? marketPrice : globalTargetPrice;
+    } catch (err) {
+      console.warn('Unable to read market price; using target price');
+    }
 
-    // USDT splits (using vestBps for treasury percentage)
-    const usdtVault = (entryUSDTBig * vestBpsBig) / 10000n;
-    const usdtPool = entryUSDTBig - usdtVault;
+    // Pull package values
+    const entryUSDTBig = BigInt(pkg.entryUSDT);
+    const exchangeRateBig = BigInt(pkg.exchangeRate);
 
-    // Token splits based on USDT allocation
-    // Calculate LP tokens using the package exchange rate (not global target price)
-    // USDT pool is already in 18 decimals, so no scaling needed
-    const poolTokens = (usdtPool * (10n ** 18n)) / exchangeRate_18;
-    
-    // Vest tokens = remaining tokens
+    if (exchangeRateBig === 0n || priceToUse === 0n) {
+      console.warn('Invalid exchange rate or price; returning zeros');
+      return { totalTokens: 0n, vestTokens: 0n, poolTokens: 0n, lpTokens: 0n, usdtPool: 0n, usdtVault: 0n };
+    }
+
+    // Total user tokens from package exchange rate (USDT per BLOCKS)
+    const totalUserTokens = (entryUSDTBig * (10n ** 18n)) / exchangeRateBig;
+
+    // USDT split by liquidityBps
+    const usdtPool = (entryUSDTBig * liquidityBps) / 10000n;
+    const usdtVault = entryUSDTBig - usdtPool;
+
+    // Pool tokens based on chosen price (AMM if available; fallback target)
+    const poolTokens = (usdtPool * (10n ** 18n)) / priceToUse;
     const vestTokens = totalUserTokens - poolTokens;
 
-    // Treasury allocation (5% of total tokens)
-    const treasuryTokens = (totalUserTokens * 500n) / 10000n;
-    const totalTokens = totalUserTokens + treasuryTokens;
-
-
-
     return {
-      totalTokens,
+      totalTokens: totalUserTokens,
       vestTokens,
       poolTokens,
       lpTokens: poolTokens,
@@ -172,6 +147,15 @@ export async function calculateSplitsWithTargetPrice(pkg: Package): Promise<Pack
   } catch (error) {
     console.error('Error calculating splits with target price:', error);
     return calculateSplits(pkg);
+  }
+}
+
+export async function getLiquidityBps(): Promise<bigint> {
+  try {
+    const contracts = getContracts();
+    return BigInt(await contracts.packageManager.liquidityBps());
+  } catch {
+    return 3000n;
   }
 }
 
@@ -191,12 +175,43 @@ export interface ContractConnectionState {
   errors: string[];
 }
 
-// Provider functions (Ethers v6)
+// Provider functions (Ethers v6) with RPC failover
 export function getProvider(): JsonRpcProvider {
   return new JsonRpcProvider(appKitConfig.rpcUrl, {
     chainId: appKitConfig.chainId,
     name: appKitConfig.chainId === 56 ? 'BSC Mainnet' : 'BSC Testnet'
   });
+}
+
+// Enhanced provider with RPC failover capability
+export async function getProviderWithFailover(): Promise<JsonRpcProvider> {
+  const networkConfig = appKitConfig.chainId === 56 ? 
+    (await import('./appkit')).BSC_MAINNET : 
+    (await import('./appkit')).BSC_TESTNET;
+  
+  const rpcUrls = (networkConfig as any).rpcUrls || [networkConfig.rpcUrl];
+  
+  for (const rpcUrl of rpcUrls) {
+    try {
+      console.log(`🔄 Trying RPC endpoint: ${rpcUrl}`);
+      const provider = new JsonRpcProvider(rpcUrl, {
+        chainId: appKitConfig.chainId,
+        name: appKitConfig.chainId === 56 ? 'BSC Mainnet' : 'BSC Testnet'
+      });
+      
+      // Test the connection with a simple call
+      await provider.getBlockNumber();
+      console.log(`✅ Successfully connected to RPC: ${rpcUrl}`);
+      return provider;
+    } catch (error) {
+      console.warn(`❌ RPC endpoint failed: ${rpcUrl}`, error);
+      continue;
+    }
+  }
+  
+  // If all RPCs fail, fall back to the original provider
+  console.error('⚠️ All RPC endpoints failed, using fallback provider');
+  return getProvider();
 }
 
 // DEPRECATED: Use useWeb3() hook instead for proper signer access
@@ -374,27 +389,130 @@ export function getContracts(signer?: Signer | null) {
     });
     throw error;
   }
+}
 
-  // Debug log successful contract creation
-  console.log('✅ Contract instances created successfully:', {
-    usdt: !!contracts.usdt,
-    share: !!contracts.share,
-    lp: !!contracts.lp,
-    vault: !!contracts.vault,
-    taxManager: !!contracts.taxManager,
-    router: !!contracts.router,
-    factory: !!contracts.factory,
-    packageManager: !!contracts.packageManager,
-    dividendDistributor: !!contracts.dividendDistributor,
-    secondaryMarket: !!contracts.secondaryMarket,
-    staking: !!contracts.staking,
-    stakingAddress: appKitConfig.contracts.staking
+// Async contract factory function with RPC failover (Ethers v6)
+export async function getContractsWithFailover(signer?: Signer | null) {
+  const signerOrProvider = signer || await getProviderWithFailover();
+
+  console.log('🏗️ getContractsWithFailover called with:', {
+    hasSigner: !!signer,
+    signerOrProviderType: signerOrProvider.constructor.name,
+    rpcUrl: (signerOrProvider as any)?.connection?.url || 'unknown',
+    appKitConfigExists: !!appKitConfig,
+    contractsConfigExists: !!appKitConfig.contracts
   });
+
+  try {
+    const packageManagerContract = createContractInstance<PackageManagerContract>(
+      appKitConfig.contracts.packageManager,
+      packageManagerAbi,
+      signerOrProvider
+    );
+
+    console.log('📋 PackageManager contract created:', {
+      address: packageManagerContract.address,
+      hasAddress: !!packageManagerContract.address
+    });
+
+    const contracts = {
+      packageManager: packageManagerContract,
+      vestingVault: createContractInstance<VestingVaultContract>(
+        appKitConfig.contracts.vault,
+        vestingVaultAbi,
+        signerOrProvider
+      ),
+      taxManager: createContractInstance<SwapTaxManagerContract>(
+        appKitConfig.contracts.taxManager,
+        swapTaxManagerAbi,
+        signerOrProvider
+      ),
+      shareToken: createContractInstance<ShareTokenContract>(
+        appKitConfig.contracts.share,
+        shareTokenAbi,
+        signerOrProvider
+      ),
+      lpToken: createContractInstance<LPTokenContract>(
+        appKitConfig.contracts.lp,
+        lpTokenAbi,
+        signerOrProvider
+      ),
+      router: createContractInstance<PancakeRouterContract>(
+        appKitConfig.contracts.router,
+        pancakeRouterAbi,
+        signerOrProvider
+      ),
+      factory: createContractInstance<Contract>(
+        appKitConfig.contracts.factory,
+        pancakeFactoryAbi,
+        signerOrProvider
+      ),
+      usdtToken: createContractInstance<ERC20Contract>(
+        appKitConfig.contracts.usdt,
+        erc20Abi,
+        signerOrProvider
+      ),
+      // V2 Contracts
+      dividendDistributor: appKitConfig.contracts.dividendDistributor ? createContractInstance<Contract>(
+        appKitConfig.contracts.dividendDistributor,
+        dividendDistributorAbi,
+        signerOrProvider
+      ) : null,
+      secondaryMarket: appKitConfig.contracts.secondaryMarket ? createContractInstance<Contract>(
+        appKitConfig.contracts.secondaryMarket,
+        secondaryMarketAbi,
+        signerOrProvider
+      ) : null,
+      staking: (() => {
+        console.log('🎯 Staking contract creation check:', {
+          stakingAddress: appKitConfig.contracts.staking,
+          stakingAddressTruthy: !!appKitConfig.contracts.staking,
+          stakingAddressType: typeof appKitConfig.contracts.staking,
+          stakingAddressLength: appKitConfig.contracts.staking?.length || 0
+        });
+        return appKitConfig.contracts.staking ? createContractInstance<Contract>(
+          appKitConfig.contracts.staking,
+          stakingAbi,
+          signerOrProvider
+        ) : null;
+      })(),
+    };
+
+    console.log('✅ Contract instances created successfully:', {
+      usdtToken: !!contracts.usdtToken,
+      shareToken: !!contracts.shareToken,
+      lpToken: !!contracts.lpToken,
+      vestingVault: !!contracts.vestingVault,
+      taxManager: !!contracts.taxManager,
+      router: !!contracts.router,
+      factory: !!contracts.factory,
+      packageManager: !!contracts.packageManager,
+      dividendDistributor: !!contracts.dividendDistributor,
+      secondaryMarket: !!contracts.secondaryMarket,
+      staking: !!contracts.staking,
+      stakingAddress: appKitConfig.contracts.staking
+    });
+
+    return contracts;
+  } catch (error) {
+    console.error('❌ Error creating contract instances:', error);
+    console.error('Contract addresses being used:', appKitConfig.contracts);
+    console.error('Staking contract specifically:', {
+      stakingAddress: appKitConfig.contracts.staking,
+      stakingEnabled: !!appKitConfig.contracts.staking
+    });
+    throw error;
+  }
 }
 
 // Utility function to get contracts with a specific signer (Ethers v6)
 export function getContractsWithSigner(signer: Signer) {
   return getContracts(signer);
+}
+
+// Utility function to easily switch to failover provider
+export async function getContractsWithFailoverSigner(signer: Signer) {
+  return getContractsWithFailover(signer);
 }
 
 export interface Package {
@@ -622,7 +740,7 @@ export async function getVestingInfo(userAddress: string): Promise<EnhancedVesti
     const isFullyVested = currentTime >= vestingEndTime;
 
     // Calculate vesting progress percentage
-    let vestingProgress = 0;
+    let vestingProgress: number = 0;
     if (schedule.duration > 0n) {
       if (currentTime <= schedule.start) {
         vestingProgress = 0;
@@ -846,7 +964,7 @@ export async function getUserRedemptionHistory(userAddress: string): Promise<Arr
     const [amounts, timestamps] = await contracts.packageManager.getUserRedemptions(userAddress);
 
     // Convert to expected format
-    const redemptions = [];
+    const redemptions: Array<{ lpAmount: bigint; timestamp: number; blockNumber: number; transactionHash: string }> = [];
     for (let i = 0; i < amounts.length; i++) {
       redemptions.push({
         lpAmount: amounts[i],
@@ -959,7 +1077,7 @@ export async function getUserReferralHistoryFromContract(userAddress: string): P
     const userPurchases = await contracts.packageManager.getUserPurchases(userAddress);
 
     // Filter purchases where this user earned referral rewards
-    const referralTransactions = userPurchases
+    const referralTransactions = (userPurchases as Array<any>)
       .filter((purchase: any) => purchase.referralReward && purchase.referralReward > 0n)
       .map((purchase: any) => ({
         referrer: userAddress, // This user is the referrer
@@ -973,7 +1091,7 @@ export async function getUserReferralHistoryFromContract(userAddress: string): P
     console.log(`Found ${referralTransactions.length} referral transactions from contract`);
 
     // Sort by timestamp (newest first)
-    referralTransactions.sort((a, b) => b.timestamp - a.timestamp);
+    referralTransactions.sort((a: { timestamp: number }, b: { timestamp: number }) => b.timestamp - a.timestamp);
 
     return referralTransactions;
   } catch (error) {
@@ -1046,7 +1164,7 @@ export async function getUserReferralHistory(userAddress: string): Promise<Array
     const cacheKey = userAddress.toLowerCase();
     const cachedEntry = referralHistoryCache.get(cacheKey);
 
-    if (isCacheValid(cachedEntry)) {
+    if (cachedEntry && isCacheValid(cachedEntry)) {
       console.log('Returning in-memory cached referral history for', userAddress);
       return cachedEntry.data;
     }
@@ -1071,10 +1189,10 @@ export async function getUserReferralHistory(userAddress: string): Promise<Array
 
     // If we hit an error, try to return any cached data we have (even if expired)
     const cacheKey = userAddress.toLowerCase();
-    const cachedEntry = referralHistoryCache.get(cacheKey);
-    if (cachedEntry) {
+    const cachedEntry2 = referralHistoryCache.get(cacheKey);
+    if (cachedEntry2) {
       console.log('Returning expired cached referral data due to error');
-      return cachedEntry.data;
+      return cachedEntry2.data;
     }
 
     // Check localStorage for any cached data
@@ -1104,7 +1222,7 @@ export async function getReferralStats(userAddress: string): Promise<{
     const cacheKey = userAddress.toLowerCase();
     const cachedEntry = referralStatsCache.get(cacheKey);
 
-    if (isCacheValid(cachedEntry)) {
+    if (cachedEntry && isCacheValid(cachedEntry)) {
       console.log('Returning in-memory cached referral stats for', userAddress);
       return cachedEntry.data;
     }
@@ -1174,7 +1292,7 @@ export async function getReferralStats(userAddress: string): Promise<{
         referralCount: contractStats.referralCount,
         averageReward: contractStats.referralCount > 0 ?
           contractStats.totalReferralRewards / BigInt(contractStats.referralCount) : 0n,
-        lastReferralDate: null as number | null, // Not available from contract
+        lastReferralDate: null, // Not available from contract
         topReferralReward: contractStats.totalReferralRewards, // Approximation
       };
 
@@ -1207,7 +1325,7 @@ export async function getReferralStats(userAddress: string): Promise<{
       totalRewards: 0n,
       referralCount: 0,
       averageReward: 0n,
-      lastReferralDate: null as number | null,
+      lastReferralDate: null,
       topReferralReward: 0n,
     };
 
@@ -1236,7 +1354,7 @@ export async function getReferralStats(userAddress: string): Promise<{
     stats.totalRewards = referralHistory.reduce((sum, ref) => sum + ref.reward, 0n);
     stats.referralCount = referralHistory.length;
     stats.averageReward = stats.totalRewards / BigInt(stats.referralCount);
-    stats.lastReferralDate = referralHistory[0]?.timestamp || null; // Already sorted newest first
+    stats.lastReferralDate = referralHistory[0] ? referralHistory[0].timestamp : null; // Already sorted newest first
     stats.topReferralReward = referralHistory.reduce((max, ref) => ref.reward > max ? ref.reward : max, 0n);
 
     // Cache the calculated stats
@@ -1482,9 +1600,10 @@ async function getRecentBlockRange(): Promise<{ fromBlock: number; toBlock: numb
   } catch (error) {
     console.warn('Error getting block range, using default:', error);
     // Fallback to an even smaller range if we can't get the latest block
-    const latestBlock = await provider.getBlockNumber().catch(() => 0);
-    const fromBlock = Math.max(0, latestBlock - 10000); // Only last ~8 hours as fallback
-    return { fromBlock, toBlock: latestBlock || 'latest' as any };
+    const fallbackProvider = getProvider();
+    const latestBlockFallback = await fallbackProvider.getBlockNumber().catch(() => 0);
+    const fromBlock = Math.max(0, latestBlockFallback - 10000); // Only last ~8 hours as fallback
+    return { fromBlock, toBlock: (latestBlockFallback as number) };
   }
 }
 
@@ -1554,7 +1673,7 @@ export async function getUserPurchaseHistoryFromEvents(userAddress: string): Pro
     const cacheKey = userAddress.toLowerCase();
     const cachedEntry = purchaseHistoryCache.get(cacheKey);
 
-    if (isCacheValid(cachedEntry)) {
+    if (cachedEntry && isCacheValid(cachedEntry)) {
       console.log('Returning in-memory cached purchase history for', userAddress);
       return cachedEntry.data;
     }
@@ -1641,7 +1760,7 @@ export async function getUserPurchaseHistoryFromEvents(userAddress: string): Pro
       });
 
       const batchResults = await Promise.allSettled(batchPromises);
-      batchResults.forEach(result => {
+      batchResults.forEach((result: PromiseSettledResult<any>) => {
         if (result.status === 'fulfilled' && result.value) {
           purchases.push(result.value);
         }
@@ -1683,10 +1802,10 @@ export async function getUserPurchaseHistoryFromEvents(userAddress: string): Pro
 
     // If we hit an error, try to return any cached data we have (even if expired)
     const cacheKey = userAddress.toLowerCase();
-    const cachedEntry = purchaseHistoryCache.get(cacheKey);
-    if (cachedEntry) {
+    const cachedEntry2 = purchaseHistoryCache.get(cacheKey);
+    if (cachedEntry2) {
       console.log('Returning expired cached data due to error');
-      return cachedEntry.data;
+      return cachedEntry2.data;
     }
 
     // Check localStorage for any cached data
@@ -1716,7 +1835,7 @@ export async function getUserRedemptionHistoryFromEvents(userAddress: string): P
     const cacheKey = userAddress.toLowerCase();
     const cachedEntry = redemptionHistoryCache.get(cacheKey);
 
-    if (isCacheValid(cachedEntry)) {
+    if (cachedEntry && isCacheValid(cachedEntry)) {
       console.log('Returning in-memory cached redemption history for', userAddress);
       return cachedEntry.data;
     }
@@ -1751,7 +1870,7 @@ export async function getUserRedemptionHistoryFromEvents(userAddress: string): P
 
     console.log(`Found ${events.length} redemption events for ${userAddress}`);
 
-    const redemptions = [];
+    const redemptions: Array<{ lpAmount: bigint; timestamp: number; blockNumber: number; transactionHash: string }> = [];
 
     // Process events in smaller batches
     const batchSize = 5; // Reduced from 10 to 5 for better RPC handling
@@ -1792,9 +1911,9 @@ export async function getUserRedemptionHistoryFromEvents(userAddress: string): P
       });
 
       const batchResults = await Promise.allSettled(batchPromises);
-      batchResults.forEach(result => {
+      batchResults.forEach((result: PromiseSettledResult<any>) => {
         if (result.status === 'fulfilled' && result.value) {
-          redemptions.push(result.value);
+          redemptions.push(result.value as { lpAmount: bigint; timestamp: number; blockNumber: number; transactionHash: string });
         }
       });
 
@@ -1834,10 +1953,10 @@ export async function getUserRedemptionHistoryFromEvents(userAddress: string): P
 
     // If we hit an error, try to return any cached data we have (even if expired)
     const cacheKey = userAddress.toLowerCase();
-    const cachedEntry = redemptionHistoryCache.get(cacheKey);
-    if (cachedEntry) {
+    const cachedEntry2 = redemptionHistoryCache.get(cacheKey);
+    if (cachedEntry2) {
       console.log('Returning expired cached redemption data due to error');
-      return cachedEntry.data;
+      return cachedEntry2.data;
     }
 
     // Check localStorage for any cached data
@@ -1958,17 +2077,17 @@ export async function getLiquidityAddedEvents(userAddress: string): Promise<Liqu
 
     const liquidityEvents: LiquidityAddedEvent[] = [];
 
-    for (const event of events) {
-      if (event.args) {
+    for (const event of events as Array<any>) {
+      if ((event as any).args) {
         const block = await provider.getBlock(event.blockNumber);
         liquidityEvents.push({
-          user: event.args[0],
-          packageId: event.args[1],
-          shareTokenAmount: event.args[2],
-          usdtAmount: event.args[3],
-          liquidityTokens: event.args[4],
-          actualShareToken: event.args[5],
-          actualUSDT: event.args[6],
+          user: (event as any).args[0],
+          packageId: (event as any).args[1],
+          shareTokenAmount: (event as any).args[2],
+          usdtAmount: (event as any).args[3],
+          liquidityTokens: (event as any).args[4],
+          actualShareToken: (event as any).args[5],
+          actualUSDT: (event as any).args[6],
           blockNumber: event.blockNumber,
           transactionHash: event.transactionHash,
           timestamp: block?.timestamp || 0,
@@ -2000,14 +2119,14 @@ export async function getLiquidityFailedEvents(userAddress: string): Promise<Liq
 
     const failedEvents: LiquidityAdditionFailedEvent[] = [];
 
-    for (const event of events) {
-      if (event.args) {
+    for (const event of events as Array<any>) {
+      if ((event as any).args) {
         const block = await provider.getBlock(event.blockNumber);
         failedEvents.push({
-          user: event.args[0],
-          packageId: event.args[1],
-          usdtAmount: event.args[2],
-          reason: event.args[3],
+          user: (event as any).args[0],
+          packageId: (event as any).args[1],
+          usdtAmount: (event as any).args[2],
+          reason: (event as any).args[3],
           blockNumber: event.blockNumber,
           transactionHash: event.transactionHash,
           timestamp: block?.timestamp || 0,

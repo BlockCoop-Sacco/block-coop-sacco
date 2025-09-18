@@ -22,5 +22,10 @@
   ],
   "verified": true,
   "verificationTimestamp": 1756833507219,
-  "verificationUrl": "https://bscscan.com/address/0x1e44B103349598aebe2D1F33E4c42B92D0d713B3#code"
+  "verificationUrl": "https://bscscan.com/address/0x1e44B103349598aebe2D1F33E4c42B92D0d713B3#code",
+  "staking": "0xf30c5bc030C31e28a56ea18F74c78718783d7e6e",
+  "stakingDeployedAt": 1757439526719,
+  "stakingDeployer": "0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4",
+  "stakingPoolsCreated": 0,
+  "stakingStatus": "deployed_no_pools"
 }

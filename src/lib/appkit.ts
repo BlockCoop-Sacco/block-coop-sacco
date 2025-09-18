@@ -33,7 +33,15 @@ export const BSC_MAINNET = {
   name: 'BSC Mainnet',
   currency: 'BNB',
   explorerUrl: 'https://bscscan.com',
-  rpcUrl: 'https://bsc-dataseed1.binance.org',
+  rpcUrl: 'https://bsc-dataseed2.binance.org',
+  // Backup RPC endpoints for failover
+  rpcUrls: [
+    'https://bsc-dataseed2.binance.org',
+    'https://bsc-dataseed3.binance.org',
+    'https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3',
+    'https://bsc-dataseed1.defibit.io',
+    'https://bsc-dataseed1.ninicoin.io'
+  ]
 };
 
 // Supported networks

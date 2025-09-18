@@ -533,10 +533,6 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
         {marketStats && (
           <div className="pt-4 border-t space-y-2 text-xs text-gray-600">
             <div className="flex justify-between">
-              <span>Target Price:</span>
-              <span>${formatTokenAmount(marketStats.targetPrice, 18, 4)}</span>
-            </div>
-            <div className="flex justify-between">
               <span>Trading Fee:</span>
               <span>{(marketStats.tradingFee / 100).toFixed(2)}%</span>
             </div>

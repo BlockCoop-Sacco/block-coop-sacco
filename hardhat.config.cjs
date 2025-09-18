@@ -1,6 +1,9 @@
 require("dotenv").config();
+// Fallback: also load .env.production if present without overriding already-set vars
+try { require("dotenv").config({ path: ".env.production", override: false }); } catch (e) {}
 require("@nomicfoundation/hardhat-toolbox");
 require("@nomicfoundation/hardhat-verify");
+require("@openzeppelin/hardhat-upgrades");
 
 module.exports = {
   solidity: {

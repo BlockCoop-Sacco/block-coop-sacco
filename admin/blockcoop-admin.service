@@ -1,0 +1,24 @@
+[Unit]
+Description=BlockCoop Admin Dashboard
+After=network.target
+
+[Service]
+Type=exec
+User=www-data
+Group=www-data
+WorkingDirectory=/root/block-coop-sacco/admin
+Environment=PATH=/root/block-coop-sacco/admin/venv/bin
+Environment=FLASK_APP=wsgi.py
+Environment=FLASK_ENV=production
+Environment=FLASK_HOST=0.0.0.0
+Environment=FLASK_PORT=5000
+ExecStart=/root/block-coop-sacco/admin/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 3 --timeout 120 wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
+
+

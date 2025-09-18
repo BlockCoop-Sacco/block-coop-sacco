@@ -52,7 +52,8 @@ export function useStaking() {
   console.log('🔍 Staking Debug Info:', {
     stakingEnabledEnv,
     hasStakingContract,
-    isStakingEnabled
+    isStakingEnabled,
+    stakingContractAddress: contracts?.staking?.address
   });
 
   // Environment variables test
@@ -67,6 +68,11 @@ export function useStaking() {
   const fetchStakingPools = useCallback(async () => {
     if (!isStakingEnabled || !contracts?.staking) {
       console.log('❌ Staking not enabled or contract not available');
+      if (!stakingEnabledEnv) {
+        setError('Staking is disabled. Set VITE_STAKING_ENABLED=true in environment variables.');
+      } else if (!hasStakingContract) {
+        setError('Staking contract not found. Deploy the staking contract and set VITE_STAKING_ADDRESS.');
+      }
       return;
     }
 
@@ -99,9 +105,9 @@ export function useStaking() {
       console.log('✅ Successfully fetched staking pools:', poolsData.length);
     } catch (err) {
       console.error('Error fetching staking pools:', err);
-      setError('Failed to fetch staking pools');
+      setError('Failed to fetch staking pools: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
-  }, [isStakingEnabled, contracts?.staking]);
+  }, [isStakingEnabled, contracts?.staking, stakingEnabledEnv, hasStakingContract]);
 
   // Fetch user stakes
   const fetchUserStakes = useCallback(async () => {

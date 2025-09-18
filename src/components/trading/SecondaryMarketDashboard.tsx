@@ -130,12 +130,6 @@ export function SecondaryMarketDashboard() {
               <div className="p-2 bg-green-100 rounded-lg">
                 <Target className="h-5 w-5 text-green-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Target Price</p>
-                <p className="text-lg font-semibold text-green-600">
-                  {marketStats ? `$${formatTokenAmount(marketStats.targetPrice, 18, 4)}` : 'Loading...'}
-                </p>
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -317,12 +311,6 @@ export function SecondaryMarketDashboard() {
             <div className="space-y-4">
               <h4 className="font-medium text-gray-900">Trading Parameters</h4>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Target Price:</span>
-                  <span className="font-medium">
-                    {marketStats ? `$${formatTokenAmount(marketStats.targetPrice, 18, 4)}` : 'Loading...'}
-                  </span>
-                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Trading Fee:</span>
                   <span className="font-medium">

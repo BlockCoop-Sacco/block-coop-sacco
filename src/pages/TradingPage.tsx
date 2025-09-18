@@ -3,7 +3,8 @@ import { StakingWidget } from '../components/staking/StakingWidget';
 import { SwapWidget } from '../components/trading/SwapWidget';
 import { useWeb3 } from '../providers/Web3Provider';
 import { useSecondaryMarketSwap } from '../hooks/useSecondaryMarketSwap';
-import { useEnhancedBalances } from '../hooks/useContracts';
+import { useEnhancedBalances, useCurrentMarketPrice } from '../hooks/useContracts';
+import { useLiquidityPoolInfo } from '../hooks/useLiquidityPoolInfo';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -16,19 +17,23 @@ import { shouldShowAdminFeatures } from '../lib/adminConfig';
 export function TradingPage() {
   const { isConnected, account, isCorrectNetwork, switchToCorrectNetwork } = useWeb3();
   const { formattedBalances, loading: balancesLoading } = useEnhancedBalances();
+  const { marketPrice, loading: marketPriceLoading, refetch: refetchMarketPrice } = useCurrentMarketPrice();
   const { marketStats, usdtInfo, blocksInfo, isSecondaryMarketEnabled, loading: marketLoading, error: marketError, fetchMarketStats, fetchTokenInfo, clearError } = useSecondaryMarketSwap();
+  const { totalLiquidity, shareTokenReserves, usdtReserves, shareTokenPrice, totalValueLocked, poolShare, loading: poolLoading, error: poolError, refresh: refreshPoolInfo } = useLiquidityPoolInfo();
   const [activeTab, setActiveTab] = useState('trading');
 
   // Check if current user is admin
   const isAdmin = shouldShowAdminFeatures(account, isConnected);
 
-  // Calculate current exchange rate (USDT per BLOCKS)
-  const currentExchangeRate = marketStats?.targetPrice ? formatTokenAmount(marketStats.targetPrice, 18, 4) : null;
+  // Calculate current exchange rate (USDT per BLOCKS) - use standardized market price
+  const currentExchangeRate = marketPrice ? formatTokenAmount(marketPrice, 18, 4) : null;
 
   // Handle swap completion to refresh data
   const handleSwapComplete = () => {
     fetchMarketStats();
     fetchTokenInfo();
+    refreshPoolInfo();
+    refetchMarketPrice(); // Explicitly refresh market price
   };
 
   // Show connection prompt if not connected
@@ -99,7 +104,7 @@ export function TradingPage() {
 
       {/* Balance Overview */}
       {isConnected && isCorrectNetwork && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -116,44 +121,9 @@ export function TradingPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Coins className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">BLOCKS Balance</p>
-                  <p className="text-lg font-semibold text-blue-600">
-                    {blocksInfo ? formatTokenAmount(blocksInfo.balance, blocksInfo.decimals, 4) : '0.0000'} BLOCKS
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${isAdmin ? 'bg-purple-100' : 'bg-orange-100'}`}>
-                  {isAdmin ? (
-                    <TrendingUp className="h-5 w-5 text-purple-600" />
-                  ) : (
-                    <BarChart3 className="h-5 w-5 text-orange-600" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">
-                    {isAdmin ? 'Target Price' : 'Exchange Rate'}
-                  </p>
-                  <p className={`text-lg font-semibold ${isAdmin ? 'text-purple-600' : 'text-orange-600'}`}>
-                    {currentExchangeRate ? `$${currentExchangeRate}` : 'Loading...'}
-                    {!isAdmin && <span className="text-xs text-gray-500 ml-1">USDT/BLOCKS</span>}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
+
 
           <Card>
             <CardContent className="p-4">
@@ -208,59 +178,118 @@ export function TradingPage() {
               <SwapWidget onSwapComplete={handleSwapComplete} />
             </div>
 
-            {/* Market Information */}
+            {/* Liquidity Pool Information & BLOCKS Balance */}
             <div className="lg:col-span-2 space-y-6">
+              {/* BLOCKS Balance Card */}
               <Card>
                 <CardHeader>
-                  <h3 className="text-lg font-semibold">Market Information</h3>
+                  <h3 className="text-lg font-semibold">BLOCKS Balance</h3>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-600">
-                        {isAdmin ? 'Target Price' : 'Exchange Rate'}
-                      </p>
-                      <p className={`text-xl font-bold ${isAdmin ? 'text-purple-600' : 'text-orange-600'}`}>
-                        {currentExchangeRate ? `$${currentExchangeRate}` : 'Loading...'}
-                        {!isAdmin && <span className="text-sm text-gray-500 ml-2">USDT per BLOCKS</span>}
-                      </p>
+                  <div className="text-center space-y-2">
+                    <p className="text-3xl font-bold text-blue-600">
+                      {formattedBalances?.shareTotal || '0.0000'}
+                    </p>
+                    <p className="text-sm text-gray-600">BLOCKS Tokens</p>
+                    <p className="text-xs text-gray-500">Total received (matches BLOCKS-LP)</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Liquidity Pool Information */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Liquidity Pool Information</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshPoolInfo}
+                      disabled={poolLoading}
+                      className="h-8 px-3"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${poolLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {poolError ? (
+                    <div className="text-center text-red-600 text-sm">
+                      {poolError}
                     </div>
-                    <div className="space-y-2">
+                  ) : poolLoading ? (
+                    <div className="text-center text-gray-600 text-sm">
+                      Loading pool data...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-xs text-gray-500 mb-2">Source: AMM pair reserves</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-gray-600">Total Value Locked</p>
+                        <p className="text-xl font-bold text-green-600">
+                          ${totalValueLocked}
+                        </p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-gray-600">BLOCKS Reserves</p>
+                        <p className="text-lg font-bold text-blue-600">
+                          {shareTokenReserves}
+                        </p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-gray-600">USDT Reserves</p>
+                        <p className="text-lg font-bold text-green-600">
+                          {usdtReserves}
+                        </p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-gray-600">Total Liquidity</p>
+                        <p className="text-lg font-bold text-purple-600">
+                          {totalLiquidity}
+                        </p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-gray-600">BLOCKS Price</p>
+                        <p className="text-lg font-bold text-orange-600">
+                          {marketPrice ? `$${formatTokenAmount(marketPrice, 18, 4)}` : `$${shareTokenPrice}`}
+                        </p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-gray-600">Your Pool Share</p>
+                        <p className="text-lg font-bold text-indigo-600">
+                          {poolShare}%
+                        </p>
+                      </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Trading Information */}
+              <Card>
+                <CardHeader>
+                  <h3 className="text-lg font-semibold">Trading Information</h3>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="text-center space-y-2">
                       <p className="text-sm text-gray-600">Trading Fee</p>
-                      <p className="text-xl font-bold text-blue-600">
+                      <p className="text-2xl font-bold text-blue-600">
                         {marketStats ? `${(marketStats.tradingFee / 100).toFixed(2)}%` : 'Loading...'}
                       </p>
                     </div>
-                    <div className="space-y-2">
+                    <div className="text-center space-y-2">
                       <p className="text-sm text-gray-600">Slippage Tolerance</p>
-                      <p className="text-xl font-bold text-orange-600">
+                      <p className="text-2xl font-bold text-orange-600">
                         {marketStats ? `${(marketStats.slippageTolerance / 100).toFixed(2)}%` : 'Loading...'}
                       </p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-600">Market Making</p>
-                      <Badge variant={marketStats?.marketMakingEnabled ? 'default' : 'secondary'}>
-                        {marketStats?.marketMakingEnabled ? 'Enabled' : 'Disabled'}
-                      </Badge>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Trading Tips */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold">Trading Tips</h3>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm text-gray-600">
-                    <p>• Always check the current exchange rate before making large trades</p>
-                    <p>• Consider slippage tolerance for volatile market conditions</p>
-                    <p>• Trading fees are automatically deducted from your transaction</p>
-                    <p>• Ensure you have sufficient token balance and allowance before swapping</p>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </TabsContent>

@@ -51,71 +51,103 @@ export function HomePage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-blue-50 via-purple-50 to-teal-50 rounded-3xl p-8 md:p-16 text-center space-y-8">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-3xl"></div>
-        <div className="relative space-y-6">
-          {/* BLOCKS Token Logo */}
-          <div className="flex justify-center mb-6">
-            <BlocksTokenLogo size="xl" animated={true} className="hover:scale-110 transition-transform duration-300" />
+      <div className="relative bg-gradient-to-br from-blue-50 via-purple-50 to-teal-50 rounded-3xl p-8 md:p-16 overflow-hidden">
+        {/* Enhanced background with animated gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-3xl animate-gradient-shift"></div>
+        
+        {/* Floating particles background - hidden on mobile for performance */}
+        <div className="absolute inset-0 overflow-hidden hidden md:block">
+          <div className="absolute top-20 left-20 w-2 h-2 bg-blue-400/30 rounded-full animate-float" style={{animationDelay: '0s'}}></div>
+          <div className="absolute top-40 right-32 w-1.5 h-1.5 bg-purple-400/40 rounded-full animate-float" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-32 left-32 w-1 h-1 bg-teal-400/50 rounded-full animate-float" style={{animationDelay: '2s'}}></div>
+          <div className="absolute bottom-20 right-20 w-2.5 h-2.5 bg-indigo-400/20 rounded-full animate-float" style={{animationDelay: '3s'}}></div>
+        </div>
+        
+        {/* Two-column layout: Content on left (60%), Logo on right (40%) */}
+        <div className="relative grid grid-cols-1 lg:grid-cols-5 gap-8 items-center min-h-[700px]">
+        {/* Left side - Content (60% of vertical height) */}
+        <div className="lg:col-span-3 space-y-8 flex flex-col justify-center h-full">
+          <div className="space-y-6 animate-fade-in-up">
+            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight animate-text-glow">
+              $BLOCKS Token: The Future of
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block animate-gradient-shift">
+                Financial Freedom is Here
+              </span>
+            </h1>
+            <p className="text-xl text-gray-600 leading-relaxed">
+              Your 100x Investment Backed by the #1 Blockchain SACCO in Africa
+            </p>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
-            $BLOCKS Token: The Future of
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block">
-              Financial Freedom is Here
-            </span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-            Your 100x Investment Backed by the #1 Blockchain SACCO in Africa
-            
-          </p>
+          {/* Enhanced Navigation Tabs with hover effects */}
+          <div className="flex flex-wrap gap-3 text-sm text-gray-600 animate-slide-in-left">
+            <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-3 py-2 rounded-full hover:bg-white/90 hover:scale-105 transition-all duration-300 cursor-pointer group animate-scale-in" style={{animationDelay: '0.1s'}}>
+              <Zap className="h-4 w-4 text-blue-600 group-hover:animate-pulse" />
+              <span className="group-hover:text-blue-700 transition-colors">Daily Yields</span>
+            </div>
+            <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-3 py-2 rounded-full hover:bg-white/90 hover:scale-105 transition-all duration-300 cursor-pointer group animate-scale-in" style={{animationDelay: '0.2s'}}>
+              <DollarSign className="h-4 w-4 text-green-600 group-hover:animate-pulse" />
+              <span className="group-hover:text-green-700 transition-colors">Annual Dividends</span>
+            </div>
+            <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-3 py-2 rounded-full hover:bg-white/90 hover:scale-105 transition-all duration-300 cursor-pointer group animate-scale-in" style={{animationDelay: '0.3s'}}>
+              <TrendingUp className="h-4 w-4 text-purple-600 group-hover:animate-pulse" />
+              <span className="group-hover:text-purple-700 transition-colors">100x Potential</span>
+            </div>
+            <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-3 py-2 rounded-full hover:bg-white/90 hover:scale-105 transition-all duration-300 cursor-pointer group animate-scale-in" style={{animationDelay: '0.4s'}}>
+              <Building2 className="h-4 w-4 text-orange-600 group-hover:animate-pulse" />
+              <span className="group-hover:text-orange-700 transition-colors">Real-World Assets</span>
+            </div>
+            <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-3 py-2 rounded-full hover:bg-white/90 hover:scale-105 transition-all duration-300 cursor-pointer group animate-scale-in" style={{animationDelay: '0.5s'}}>
+              <Users className="h-4 w-4 text-teal-600 group-hover:animate-pulse" />
+              <span className="group-hover:text-teal-700 transition-colors">Community Impact</span>
+            </div>
+          </div>
+
+          {/* Enhanced Dual CTAs with sophisticated animations */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-4 animate-fade-in-up" style={{animationDelay: '0.6s'}}>
+            <Button
+              size="lg"
+              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 font-semibold focus:ring-4 focus:ring-blue-300 group relative overflow-hidden animate-scale-in"
+              onClick={scrollToPackages}
+              aria-label="Start investing in BlockCoop packages today"
+              style={{animationDelay: '0.7s'}}
+            >
+              <span className="relative z-10 flex items-center">
+                🚀 Buy $BLOCKS Now
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="px-8 py-4 bg-white/90 backdrop-blur-sm border-2 border-blue-600 text-blue-700 hover:bg-blue-600 hover:text-white shadow-lg hover:shadow-xl transition-all duration-300 font-semibold focus:ring-4 focus:ring-blue-300 group animate-scale-in"
+              onClick={() => window.location.href = '/trading'}
+              aria-label="Go to trading page"
+              style={{animationDelay: '0.8s'}}
+            >
+              🥞 Trade on PancakeSwap
+            </Button>
+          </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full">
-            <Zap className="h-5 w-5 text-blue-600" />
-            <span>Daily Yields</span>
-          </div>
-          <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full">
-            <DollarSign className="h-5 w-5 text-green-600" />
-            <span>Annual Dividends</span>
-          </div>
-          <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-            <span>100x Potential</span>
-          </div>
-          <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full">
-            <Building2 className="h-5 w-5 text-orange-600" />
-            <span>Real-World Assets</span>
-          </div>
-          <div className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full">
-            <Users className="h-5 w-5 text-teal-600" />
-            <span>Community Impact</span>
-          </div>
-        </div>
-
-        {/* Dual CTAs */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-          <Button
-            size="lg"
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 font-semibold focus:ring-4 focus:ring-blue-300"
-            onClick={scrollToPackages}
-            aria-label="Start investing in BlockCoop packages today"
-          >
-            🚀 Buy $BLOCKS Now
-            <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="px-8 py-4 bg-white/90 backdrop-blur-sm border-2 border-blue-600 text-blue-700 hover:bg-blue-600 hover:text-white shadow-lg hover:shadow-xl transition-all duration-300 font-semibold focus:ring-4 focus:ring-blue-300"
-            onClick={() => window.open('https://pancakeswap.finance', '_blank')}
-            aria-label="Trade BLOCKS on PancakeSwap"
-          >
-            🥞 Trade on PancakeSwap
-          </Button>
-        </div>
+                 {/* Right side - Enhanced BLOCKS Token Logo (40% of vertical height) */}
+         <div className="lg:col-span-2 flex justify-center lg:justify-end items-center h-full animate-slide-in-right">
+           <div className="flex items-center justify-center w-full h-full relative">
+             <BlocksTokenLogo 
+               size="giant" 
+               animated={true}
+               sophisticated={true}
+               className="hover:scale-110 transition-all duration-500 ease-out transform hover:rotate-3 hover:shadow-2xl animate-scale-in" 
+               style={{animationDelay: '0.9s'}}
+             />
+             
+             {/* Additional decorative elements - hidden on mobile */}
+             <div className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-20 animate-pulse animate-scale-in hidden md:block" style={{animationDelay: '1s'}}></div>
+             <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-gradient-to-r from-purple-400 to-teal-400 rounded-full opacity-30 animate-pulse animate-scale-in hidden md:block" style={{animationDelay: '1.1s'}}></div>
+           </div>
+         </div>
+       </div>
       </div>
 
       {/* The Mission Section */}
@@ -894,15 +926,15 @@ export function HomePage() {
             {/* Platform Links */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center text-sm">
               
-              <a
-                href="https://play.google.com/store/apps/details?id=com.sortika"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full hover:bg-white/30 transition-all duration-300"
-              >
-                <Package className="h-4 w-4" />
-                <span>📱 Download Sortika App</span>
-              </a>
+                             <a
+                 href="https://play.google.com/store/apps/details?id=com.app.sortika"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full hover:bg-white/30 transition-all duration-300"
+               >
+                 <Package className="h-4 w-4" />
+                 <span>📱 Download Sortika App</span>
+               </a>
             </div>
           </div>
         </div>

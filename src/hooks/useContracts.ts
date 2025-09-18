@@ -542,9 +542,66 @@ export function useNetworkValidation() {
   };
 }
 
+// Hook to fetch current market price from AMM
+export function useCurrentMarketPrice() {
+  const { contracts, isConnected } = useWeb3();
+  const [marketPrice, setMarketPrice] = useState<bigint | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMarketPrice = useCallback(async () => {
+    if (!isConnected || !contracts) {
+      setMarketPrice(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [price, hasLiquidity] = await contracts.packageManager.getCurrentMarketPrice();
+      setMarketPrice(price);
+      
+      // Debug logging
+      const priceFormatted = formatTokenAmount(price, 18, 4);
+      console.log('Market price fetch result:', {
+        price: priceFormatted,
+        hasLiquidity,
+        priceRaw: price.toString(),
+        source: hasLiquidity ? 'AMM' : 'Global Target Price'
+      });
+      
+      if (!hasLiquidity) {
+        console.warn('No AMM liquidity found, using global target price');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch market price';
+      setError(errorMessage);
+      console.error('Error fetching market price:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [contracts, isConnected]);
+
+  // Auto-refresh on purchase/redemption events
+  useRefreshListener('refreshMarketPrice', fetchMarketPrice);
+
+  useEffect(() => {
+    fetchMarketPrice();
+  }, [fetchMarketPrice]);
+
+  return {
+    marketPrice,
+    loading,
+    error,
+    refetch: fetchMarketPrice,
+  };
+}
+
 // Hook for user purchase history
 export function usePurchaseHistory() {
   const { account, contracts, isConnected } = useWeb3();
+  const { marketPrice } = useCurrentMarketPrice();
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [redemptions, setRedemptions] = useState<Array<{
     lpAmount: bigint;
@@ -646,20 +703,20 @@ export function usePurchaseHistory() {
     // Calculate performance metrics
     const currentLPTokens = totalLPTokens - totalRedemptions;
 
-    // Simple ROI calculation based on tokens received vs USDT invested
-    // Note: This is a basic calculation and doesn't account for current market prices
+    // ROI calculation based on current market price vs USDT invested
     let roi = 0;
-    if (totalInvested > 0n) {
-      // Assuming 1:1 token to USDT ratio for basic ROI calculation
-      // In a real scenario, you'd want to fetch current token prices
-
+    if (totalInvested > 0n && totalTokensReceived > 0n && marketPrice) {
       // Convert to numbers safely to avoid BigInt overflow
       const investedNumber = Number(totalInvested) / 1e18; // USDT has 18 decimals in V2 architecture
       const tokensNumber = Number(totalTokensReceived) / 1e18; // ShareTokens have 18 decimals
-
+      const currentBLOCKSPrice = Number(marketPrice) / 1e18; // Market price is in 18 decimals
+      
+      // Calculate current value of tokens
+      const currentValue = tokensNumber * currentBLOCKSPrice;
+      
       // Calculate ROI as percentage
       if (investedNumber > 0) {
-        roi = ((tokensNumber - investedNumber) / investedNumber) * 100;
+        roi = ((currentValue - investedNumber) / investedNumber) * 100;
       }
     }
 

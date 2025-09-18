@@ -12,6 +12,7 @@ import './config/env.js';
 // Import routes
 import mpesaRoutes from './routes/mpesa.js';
 import healthRoutes from './routes/health.js';
+import gaslessRoutes from './routes/gasless.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -82,6 +83,7 @@ app.use('/api/health', healthRoutes);
 
 // API routes
 app.use('/api/mpesa', mpesaRoutes);
+app.use('/api/gasless', gaslessRoutes);
 
 // Also mount under /api/blockcoop to match Daraja-configured CALLBACK URLs
 app.use('/api/blockcoop', mpesaRoutes);

@@ -1,0 +1,34 @@
+[
+  {
+    "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+    "name": "totalLocked",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+    "name": "released",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+    "name": "userSchedule",
+    "outputs": [
+      {
+        "components": [
+          {"internalType": "uint64", "name": "cliff", "type": "uint64"},
+          {"internalType": "uint64", "name": "duration", "type": "uint64"},
+          {"internalType": "uint256", "name": "start", "type": "uint256"}
+        ],
+        "internalType": "struct VestingVault.Schedule",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Packages - BlockCoop Admin{% endblock %}
+{% block page_title %}Packages{% endblock %}
+
+{% block content %}
+<!-- Package Statistics -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Package Performance Overview</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="text-center">
+            <div class="text-3xl font-bold text-blue-600">{{ packages|length }}</div>
+            <div class="text-sm text-gray-600">Active Packages</div>
+        </div>
+        <div class="text-center">
+            <div class="text-3xl font-bold text-green-600">
+                {{ packages|sum(attribute='total_purchases') or 0 }}
+            </div>
+            <div class="text-sm text-gray-600">Total Purchases</div>
+        </div>
+        <div class="text-center">
+            <div class="text-3xl font-bold text-purple-600">
+                ${{ "%.2f"|format(packages|sum(attribute='total_usd') or 0) }}
+            </div>
+            <div class="text-sm text-gray-600">Total Revenue</div>
+        </div>
+    </div>
+</div>
+
+<!-- Packages Table -->
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Package Statistics</h3>
+        <p class="text-sm text-gray-600 mt-1">Detailed breakdown by package</p>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Purchases</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Successful</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total USD</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total KES</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Amount</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Performance</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for package in packages %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <div class="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">{{ package.packageId }}</span>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">Package {{ package.packageId }}</div>
+                                <div class="text-sm text-gray-500">Investment Package</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ package.total_purchases }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ package.successful_purchases }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% set success_rate = (package.successful_purchases / package.total_purchases * 100) if package.total_purchases > 0 else 0 %}
+                        <div class="flex items-center">
+                            <div class="flex-1 bg-gray-200 rounded-full h-2 mr-2">
+                                <div class="bg-green-600 h-2 rounded-full" style="width: {{ success_rate }}%"></div>
+                            </div>
+                            <span class="text-sm text-gray-900">{{ "%.1f"|format(success_rate) }}%</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${{ "%.2f"|format(package.total_usd or 0) }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">KSh {{ "{:,}".format(package.total_kes or 0) }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${{ "%.2f"|format(package.avg_amount or 0) }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if success_rate >= 80 %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <i class="fas fa-arrow-up mr-1"></i>Excellent
+                            </span>
+                        {% elif success_rate >= 60 %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-minus mr-1"></i>Good
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <i class="fas fa-arrow-down mr-1"></i>Needs Attention
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                        <i class="fas fa-box text-4xl mb-4"></i>
+                        <p class="text-lg">No package data found</p>
+                        <p class="text-sm">Package statistics will appear here once transactions are processed</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Package Performance Chart -->
+{% if packages %}
+<div class="mt-8 bg-white rounded-lg shadow-md p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Package Performance Comparison</h3>
+    <canvas id="packagePerformanceChart" width="400" height="200"></canvas>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if packages %}
+<script>
+    // Package Performance Chart
+    const packageCtx = document.getElementById('packagePerformanceChart').getContext('2d');
+    const packageData = {{ packages | tojson }};
+    
+    new Chart(packageCtx, {
+        type: 'bar',
+        data: {
+            labels: packageData.map(pkg => `Package ${pkg.packageId}`),
+            datasets: [
+                {
+                    label: 'Total Purchases',
+                    data: packageData.map(pkg => pkg.total_purchases),
+                    backgroundColor: '#3B82F6',
+                    borderColor: '#2563EB',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Successful Purchases',
+                    data: packageData.map(pkg => pkg.successful_purchases),
+                    backgroundColor: '#10B981',
+                    borderColor: '#059669',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}
+
+
+

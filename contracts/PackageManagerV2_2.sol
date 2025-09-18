@@ -52,6 +52,7 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
   uint256 public deadlineWindow = 300; // 5 minutes
   uint256 public globalTargetPrice; // 18 decimals
   uint256 public slippageTolerance = 500; // 5%
+  uint16 public liquidityBps = 3000; // 30% of net USDT to liquidity by default
 
   // Immutable USDT decimals normalization
   uint8 public immutable USDT_DEC;
@@ -88,6 +89,7 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
   event LiquidityAdditionFailed(address indexed user, uint256 indexed packageId, uint256 usdtAmount, string reason);
   event SlippageProtectionTriggered(address indexed user, uint256 indexed packageId, uint256 requestedShareToken, uint256 requestedUSDT, uint256 minShareToken, uint256 minUSDT);
   event SlippageToleranceUpdated(uint256 oldTolerance, uint256 newTolerance);
+  event LiquidityBpsUpdated(uint16 oldBps, uint16 newBps);
 
   constructor(
     address usdt_, address share_, address lp_, address vault_, address router_, address factory_, address treasury_, address tax_, address admin, uint256 initialGlobalTargetPrice_
@@ -207,6 +209,7 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
 
   function setDeadlineWindow(uint256 newWindow) external onlyAdmin { require(newWindow>=60 && newWindow<=3600, "Invalid window"); uint256 old=deadlineWindow; deadlineWindow=newWindow; emit DeadlineWindowUpdated(old,newWindow); }
   function setTreasury(address newTreasury) external onlyAdmin { require(newTreasury!=address(0),"Invalid treasury"); address old=treasury; treasury=newTreasury; emit TreasuryUpdated(old,newTreasury); }
+  function setLiquidityBps(uint16 newBps) external onlyAdmin { require(newBps<=10000, "Invalid bps"); uint16 old=liquidityBps; liquidityBps=newBps; emit LiquidityBpsUpdated(old,newBps); }
 
   // One-time router allowances to save gas per tx
   function initRouterAllowances() external onlyAdmin {
@@ -244,49 +247,58 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
     // Normalize using immutable scale
     uint256 normalizedNetUSDT = USDT_SCALE_UP ? (netUSDT * USDT_SCALE) : (netUSDT / USDT_SCALE);
 
+    // Total BLOCKS allocated to user based on package exchange rate
     uint256 totalUserTokens = (normalizedNetUSDT * 1e18) / pkg.exchangeRate;
 
-    uint256 usdtForPool = (netUSDT * (10_000 - pkg.vestBps)) / 10_000;
+    // Split net USDT into liquidity and treasury using configurable bps (default 30% liquidity)
+    uint256 usdtForPool = (netUSDT * liquidityBps) / 10_000;
     uint256 usdtForVault = netUSDT - usdtForPool;
 
-    uint256 vestTokens = (totalUserTokens * pkg.vestBps) / 10_000;
-    uint256 poolTokens = totalUserTokens - vestTokens;
+    // Immediately send treasury portion
+    if (usdtForVault > 0) { usdt.safeTransfer(treasury, usdtForVault); }
 
+    // Determine price: prefer AMM market price if liquidity exists, else fallback to global target price
+    uint256 poolTokens = 0;
+    uint256 liquidity = 0;
+    if (usdtForPool > 0) {
+      require(globalTargetPrice > 0, "No valid global target price");
+
+      (uint256 marketPrice, bool hasLiquidity) = getCurrentMarketPrice();
+      uint256 priceToUse = hasLiquidity ? marketPrice : globalTargetPrice;
+
+      // Normalize usdtForPool to 18 decimals for liquidity calculation using immutable scale
+      uint256 normalizedUsdtForPool = USDT_SCALE_UP ? (usdtForPool * USDT_SCALE) : (usdtForPool / USDT_SCALE);
+
+      // Desired BLOCKS for liquidity based on chosen price
+      uint256 liquidityBLOCKS = (normalizedUsdtForPool * 1e18) / priceToUse;
+      shareToken.mint(address(this), liquidityBLOCKS);
+
+      // Add liquidity with slippage protection; capture actual BLOCKS consumed by router
+      uint256 actualShareTokenUsed = 0;
+      (liquidity, actualShareTokenUsed) = _addLiquidityWithProtection(buyer, id, usdtForPool, liquidityBLOCKS);
+
+      // Emit event showing market price vs global target price for transparency
+      emit MarketPriceUsed(marketPrice, globalTargetPrice, marketPrice>globalTargetPrice?marketPrice-globalTargetPrice:globalTargetPrice-marketPrice);
+
+      // If addLiquidity succeeded, treat actualShareTokenUsed as pool tokens; otherwise, 0
+      poolTokens = actualShareTokenUsed;
+      if (liquidity == 0) {
+        // On failure, sweep all minted BLOCKS intended for liquidity to treasury
+        IERC20(address(shareToken)).safeTransfer(treasury, liquidityBLOCKS);
+        // poolTokens remains 0 and all tokens will be vested below
+      }
+    }
+
+    // Vesting tokens are the remainder of user's allocation after pool contribution
+    uint256 vestTokens = totalUserTokens - poolTokens;
     if (vestTokens > 0) {
       shareToken.mint(address(vestingVault), vestTokens);
       vestingVault.lock(buyer, vestTokens, pkg.cliff, pkg.duration);
     }
 
-    if (usdtForVault > 0) {
-      usdt.safeTransfer(treasury, usdtForVault);
-    }
-
-    uint256 liquidity = 0;
-    if (usdtForPool > 0) {
-      (uint256 marketPrice, bool hasLiquidity) = getCurrentMarketPrice();
-      uint256 priceToUse = hasLiquidity ? marketPrice : globalTargetPrice;
-      require(priceToUse > 0, "No valid price");
-
-      // Normalize usdtForPool to 18 decimals for liquidity calculation using immutable scale
-      uint256 normalizedUsdtForPool = USDT_SCALE_UP ? (usdtForPool * USDT_SCALE) : (usdtForPool / USDT_SCALE);
-
-      uint256 liquidityBLOCKS = (normalizedUsdtForPool * 1e18) / priceToUse;
-      shareToken.mint(address(this), liquidityBLOCKS);
-      liquidity = _addLiquidityWithProtection(buyer, id, usdtForPool, liquidityBLOCKS);
-      emit MarketPriceUsed(marketPrice, globalTargetPrice, marketPrice>globalTargetPrice?marketPrice-globalTargetPrice:globalTargetPrice-marketPrice);
-      if (liquidity == 0) {
-        IERC20(address(shareToken)).safeTransfer(treasury, liquidityBLOCKS);
-      }
-    }
-
-    // MODIFIED: Mint BLOCKS-LP tokens equal to total user tokens (1:1 ratio)
-    // This ensures users receive equal amounts of BLOCKS and BLOCKS-LP tokens
-    // Note: The liquidity pool still receives the calculated pool tokens based on the split,
-    // but users get LP tokens equal to their total token allocation for redemption purposes
-    uint256 lpTokensMinted = totalUserTokens;
-    if (lpTokensMinted > 0) {
-      lpToken.mint(buyer, lpTokensMinted);
-    }
+    // Mint synthetic LP tokens 1:1 with BLOCKS contributed to liquidity
+    uint256 lpTokensMinted = poolTokens;
+    if (lpTokensMinted > 0) { lpToken.mint(buyer, lpTokensMinted); }
 
     uint256 referralReward = 0;
     if (referrer != address(0) && pkg.referralBps > 0) {
@@ -327,7 +339,7 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
     _userPurchases[user].push(UserPurchase({packageId:packageId,usdtAmount:usdtAmount,totalTokens:totalTokens,vestTokens:vestTokens,poolTokens:poolTokens,lpTokens:lpTokens,referrer:referrer,referralReward:referralReward,timestamp:block.timestamp}));
   }
 
-  function _addLiquidityWithProtection(address user,uint256 packageId,uint256 usdtAmount,uint256 blocksAmount) internal returns (uint256 liquidity) {
+  function _addLiquidityWithProtection(address user,uint256 packageId,uint256 usdtAmount,uint256 blocksAmount) internal returns (uint256 liquidity, uint256 actualShareTokenUsed) {
     uint256 minUSDT = (usdtAmount * (10000 - slippageTolerance)) / 10000;
     uint256 minBLOCKS = (blocksAmount * (10000 - slippageTolerance)) / 10000;
     emit SlippageProtectionTriggered(user, packageId, blocksAmount, usdtAmount, minBLOCKS, minUSDT);
@@ -353,11 +365,11 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
       if (leftover > 0) {
         IERC20(address(shareToken)).safeTransfer(treasury, leftover);
       }
-      return liquidityTokens;
+      return (liquidityTokens, actualShareToken);
     } catch Error(string memory reason) {
-      _handleLiquidityFailure(user, packageId, usdtAmount, reason); return 0;
+      _handleLiquidityFailure(user, packageId, usdtAmount, reason); return (0, 0);
     } catch (bytes memory low) {
-      string memory reason = low.length>0 ? string(low) : "Unknown low-level error"; _handleLiquidityFailure(user, packageId, usdtAmount, reason); return 0;
+      string memory reason = low.length>0 ? string(low) : "Unknown low-level error"; _handleLiquidityFailure(user, packageId, usdtAmount, reason); return (0, 0);
     }
   }
 
