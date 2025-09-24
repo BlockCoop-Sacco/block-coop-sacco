@@ -32,12 +32,16 @@ export function PackagesPage() {
         toast.error('Package manager contract not available');
         return;
       }
-      // Get package count and generate IDs
-      const packageCount = await contracts.packageManager.nextPackageId();
+      // Use read-only contracts for all reads to avoid wallet provider decode issues
+      const readOnly = getContracts();
+
+      // Get package count and generate IDs via read-only provider
+      const packageCount = await readOnly.packageManager.nextPackageId();
       const packageIds = Array.from({ length: Number(packageCount) }, (_, i) => i);
 
       const packagePromises = packageIds.map(async (id: number) => {
-        const pkg = await contracts.packageManager.getPackage(id);
+        // Read package details via read-only provider
+        const pkg = await readOnly.packageManager.getPackage(id);
 
         // Handle both array and object formats (same as PackageList)
         let packageData;

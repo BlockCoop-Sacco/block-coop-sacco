@@ -685,8 +685,8 @@
       ]
     },
     "/root/block-coop-sacco/contracts/PackageManagerV2_2.sol": {
-      "lastModificationDate": 1758148368829,
-      "contentHash": "d78bc3599d0606a6ef37d8195da0eb2d",
+      "lastModificationDate": 1758309771424,
+      "contentHash": "ae8dc5476053fe3e3351efcb8c9fd5bf",
       "sourceName": "contracts/PackageManagerV2_2.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1547,8 +1547,8 @@
       ]
     },
     "/root/block-coop-sacco/contracts/PackageManagerUpgradeable.sol": {
-      "lastModificationDate": 1758148104461,
-      "contentHash": "33237b2933abf67016187af9fe00a376",
+      "lastModificationDate": 1758296842118,
+      "contentHash": "1ad3ce3adad1d49e41244bba0ce39983",
       "sourceName": "contracts/PackageManagerUpgradeable.sol",
       "solcConfig": {
         "version": "0.8.20",

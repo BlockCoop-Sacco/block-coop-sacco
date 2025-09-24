@@ -22,6 +22,37 @@ export function PortfolioPage() {
   const { marketPrice, loading: marketPriceLoading } = useCurrentMarketPrice();
   const { refreshAll } = useRefreshContext();
   const [claiming, setClaiming] = useState(false);
+
+  // Prompt wallet to watch an ERC20 asset (EIP-747)
+  const handleWatchAsset = async (address: string, symbol: string, decimals: number = 18) => {
+    try {
+      const ethereum = (window as any)?.ethereum;
+      if (!ethereum || !ethereum.request) {
+        toast.error('No compatible wallet detected');
+        return;
+      }
+      const wasAdded = await ethereum.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address,
+            symbol,
+            decimals,
+          },
+        },
+      });
+
+      if (wasAdded) {
+        toast.success(`${symbol} added to wallet`);
+      } else {
+        toast('Token addition dismissed');
+      }
+    } catch (err) {
+      console.error('wallet_watchAsset error:', err);
+      toast.error('Failed to add token to wallet');
+    }
+  };
   const [ammEvents, setAmmEvents] = useState<Array<{
     user: string;
     packageId: bigint;
@@ -583,26 +614,7 @@ export function PortfolioPage() {
                           <p className="text-gray-600">Pool Tokens (allocation)</p>
                           <p className="font-semibold">{formatTokenAmount(purchase.poolTokens, 18, 4)}</p>
                         </div>
-                        <div>
-                          <p className="text-gray-600">AMM Pool Tokens (actual)</p>
-                          <p className="font-semibold">
-                            {(() => {
-                              const match = findNearestAmmEvent(Number(purchase.packageId), Number(purchase.timestamp));
-                              return match ? formatTokenAmount(match.actualShareToken, 18, 4) : '—';
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Effective Vesting (est.)</p>
-                          <p className="font-semibold">
-                            {(() => {
-                              const match = findNearestAmmEvent(Number(purchase.packageId), Number(purchase.timestamp));
-                              if (!match) return '—';
-                              const effective = (purchase.totalTokens || 0n) - (match.actualShareToken || 0n);
-                              return formatTokenAmount(effective, 18, 4);
-                            })()}
-                          </p>
-                        </div>
+                        
                         <div>
                           <p className="text-gray-600">BLOCKS-LP</p>
                           <p className="font-semibold">{formatTokenAmount(purchase.lpTokens, 18, 4)}</p>
@@ -614,15 +626,22 @@ export function PortfolioPage() {
                       </div>
                     </div>
                     <div className="ml-4">
-                      <a
-                        href={`https://testnet.bscscan.com/tx/${purchase.transactionHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        View TX
-                      </a>
+                      {purchase.transactionHash ? (
+                        <a
+                          href={`${appKitConfig.network.explorerUrl}/tx/${purchase.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View TX
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center text-sm text-gray-400">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          No TX hash
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -663,15 +682,22 @@ export function PortfolioPage() {
                       </div>
                     </div>
                     <div className="ml-4">
-                      <a
-                        href={`https://testnet.bscscan.com/tx/${redemption.transactionHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        View TX
-                      </a>
+                      {redemption.transactionHash ? (
+                        <a
+                          href={`${appKitConfig.network.explorerUrl}/tx/${redemption.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View TX
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center text-sm text-gray-400">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          No TX hash
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -687,6 +713,24 @@ export function PortfolioPage() {
           <h2 className="text-xl font-semibold">Token Balances</h2>
         </CardHeader>
         <CardContent>
+          {/* Add to Wallet actions */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <Button
+              onClick={() => handleWatchAsset('0x453A648C7c136d644251777B6156e2a5f79FE804', 'BLOCKS', 18)}
+              className="flex items-center gap-2"
+            >
+              <Wallet className="h-4 w-4" />
+              Add BLOCKS To Wallet
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleWatchAsset('0xA7758Ea9D9401546EF94921DfF8C1E8A6D2322c6', 'BLOCKS-LP', 18)}
+              className="flex items-center gap-2"
+            >
+              <Wallet className="h-4 w-4" />
+              Add BLOCKS_LP To Wallet
+            </Button>
+          </div>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />

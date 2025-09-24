@@ -84,7 +84,13 @@ export class LiquidityManager {
     const shareTokenAddress = appKitConfig.contracts.share;
     const usdtAddress = appKitConfig.contracts.usdt;
     
-    const pairAddress = await this.factory.getPair(shareTokenAddress, usdtAddress);
+    let pairAddress: string;
+    try {
+      pairAddress = await this.factory.getPair(shareTokenAddress, usdtAddress);
+    } catch (e: any) {
+      throw new Error('Failed to read pair from factory. Check factory address or RPC.');
+    }
+
     if (pairAddress === ethers.ZeroAddress) {
       throw new Error('No liquidity pair found for ShareToken/USDT');
     }
@@ -98,10 +104,17 @@ export class LiquidityManager {
   async getReserves(): Promise<{ reserveShare: bigint; reserveUSDT: bigint; token0: string; token1: string }> {
     const pairAddress = await this.getPairAddress();
     const pair = new Contract(pairAddress, pancakePairAbi.abi, this.signer);
-    
-    const [reserve0, reserve1] = await pair.getReserves();
-    const token0 = await pair.token0();
-    const token1 = await pair.token1();
+
+    let reserve0: bigint, reserve1: bigint, token0: string, token1: string;
+    try {
+      const reserves = await pair.getReserves();
+      reserve0 = reserves[0];
+      reserve1 = reserves[1];
+      token0 = await pair.token0();
+      token1 = await pair.token1();
+    } catch (e: any) {
+      throw new Error('Failed to read reserves. Possible bad pair address or RPC read issue.');
+    }
     
     const shareTokenAddress = appKitConfig.contracts.share;
     const usdtAddress = appKitConfig.contracts.usdt;

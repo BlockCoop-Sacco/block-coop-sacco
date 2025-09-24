@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { useWeb3 } from '../providers/Web3Provider';
 import { useRefreshListener } from '../contexts/RefreshContext';
 import { appKitConfig } from '../lib/appkit';
+import { getProvider, getGlobalTargetPrice, getContracts } from '../lib/contracts';
 
 // SecondaryMarket ABI - only the functions we need (based on actual contract)
 const SECONDARY_MARKET_ABI = [
@@ -50,6 +51,8 @@ export interface MarketStats {
   tradingFee: number; // in basis points
   slippageTolerance: number; // in basis points
   marketMakingEnabled: boolean;
+  marketPrice?: bigint; // AMM price (USDT per BLOCKS, 18 decimals)
+  hasLiquidity?: boolean;
 }
 
 export interface TokenInfo {
@@ -72,30 +75,32 @@ export function useSecondaryMarketSwap() {
   // Check if SecondaryMarket is available
   const isSecondaryMarketEnabled = Boolean(appKitConfig.contracts.secondaryMarket);
 
-  // Create contract instances for read operations (using provider)
+  // Create contract instances for read operations (using dedicated JsonRpcProvider)
   const getReadOnlyContracts = useCallback(() => {
-    if (!provider || !isSecondaryMarketEnabled) return null;
+    if (!isSecondaryMarketEnabled) return null;
+
+    const readProvider = getProvider();
 
     const secondaryMarket = new ethers.Contract(
       appKitConfig.contracts.secondaryMarket!,
       SECONDARY_MARKET_ABI,
-      provider
+      readProvider
     );
 
     const usdtToken = new ethers.Contract(
       appKitConfig.contracts.usdt,
       ERC20_ABI,
-      provider
+      readProvider
     );
 
     const blocksToken = new ethers.Contract(
       appKitConfig.contracts.share,
       ERC20_ABI,
-      provider
+      readProvider
     );
 
     return { secondaryMarket, usdtToken, blocksToken };
-  }, [provider, isSecondaryMarketEnabled]);
+  }, [isSecondaryMarketEnabled]);
 
   // Create contract instances for write operations (using signer)
   const getWriteContracts = useCallback(() => {
@@ -132,17 +137,39 @@ export function useSecondaryMarketSwap() {
     try {
       setLoading(true);
 
-      const [targetPrice, swapFee, isPaused] = await Promise.all([
-        contracts.secondaryMarket.targetPrice(),
+      // Read fee/paused in parallel; handle targetPrice with graceful fallback
+      const [swapFee, isPaused] = await Promise.all([
         contracts.secondaryMarket.swapFee(),
         contracts.secondaryMarket.paused()
       ]);
+
+      let targetPrice: bigint;
+      try {
+        targetPrice = await contracts.secondaryMarket.targetPrice();
+      } catch (e: any) {
+        console.warn('targetPrice() failed; falling back to PackageManager global target price', e);
+        targetPrice = await getGlobalTargetPrice();
+      }
+
+      // Also read AMM market price and liquidity flag from PackageManager
+      let marketPrice: bigint | undefined = undefined;
+      let hasLiquidity: boolean | undefined = undefined;
+      try {
+        const pm = getContracts().packageManager;
+        const res = await pm.getCurrentMarketPrice();
+        marketPrice = BigInt(res[0]);
+        hasLiquidity = Boolean(res[1]);
+      } catch (e) {
+        console.warn('getCurrentMarketPrice() failed; will rely on targetPrice for quotes');
+      }
 
       setMarketStats({
         targetPrice,
         tradingFee: Number(swapFee),
         slippageTolerance: 100, // Default 1% slippage tolerance
-        marketMakingEnabled: !isPaused // Market is enabled when not paused
+        marketMakingEnabled: !isPaused, // Market is enabled when not paused
+        marketPrice,
+        hasLiquidity,
       });
     } catch (err: any) {
       console.error('Error fetching market stats:', err);
@@ -220,13 +247,18 @@ export function useSecondaryMarketSwap() {
       let outputAmount: bigint;
 
       if (inputToken === 'USDT') {
-        // For USDT→BLOCKS, use target price since contract doesn't have this function
-        if (!marketStats?.targetPrice) {
-          throw new Error('Target price not available');
+        // For USDT→BLOCKS, prefer AMM market price when liquidity exists; fallback to target price
+        const hasLiquidity = marketStats?.hasLiquidity;
+        const marketPrice = marketStats?.marketPrice;
+        const priceToUse = hasLiquidity && marketPrice && marketPrice > 0n ? marketPrice : marketStats?.targetPrice;
+        if (!priceToUse || priceToUse === 0n) {
+          throw new Error('Price not available');
         }
-        // Calculate BLOCKS amount: usdtAmount / targetPrice
-        // Both USDT and BLOCKS have 18 decimals, targetPrice is in 18 decimals
-        outputAmount = (inputAmount * BigInt(1e18)) / marketStats.targetPrice;
+        // Convert input amount to 18 decimals if needed, then divide by price (USDT per BLOCKS in 18-dec)
+        const inDecimals = inputToken === 'USDT' ? (usdtInfo?.decimals ?? 18) : 18;
+        const scaleUp = 18 - inDecimals;
+        const amountIn18 = scaleUp > 0 ? inputAmount * (10n ** BigInt(scaleUp)) : inputAmount;
+        outputAmount = (amountIn18 * 10n ** 18n) / priceToUse;
       } else {
         // For BLOCKS→USDT, use contract function
         outputAmount = await contracts.secondaryMarket.getSwapQuote(inputAmount);

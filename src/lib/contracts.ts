@@ -78,7 +78,7 @@ export function calculateSplits(pkg: Package): PackageSplits {
     totalTokens: totalUserTokens,
     vestTokens,
     poolTokens,
-    lpTokens: poolTokens,
+    lpTokens: totalUserTokens,
     usdtPool,
     usdtVault,
   };
@@ -140,7 +140,7 @@ export async function calculateSplitsWithTargetPrice(pkg: Package): Promise<Pack
       totalTokens: totalUserTokens,
       vestTokens,
       poolTokens,
-      lpTokens: poolTokens,
+    lpTokens: totalUserTokens,
       usdtPool,
       usdtVault,
     };
@@ -729,9 +729,9 @@ export async function getVestingInfo(userAddress: string): Promise<EnhancedVesti
       contracts.vestingVault.userSchedule(userAddress)
     ]);
 
-    // Calculate claimable amount (vested - released)
-    const claimable = vestedAmount - released;
-    const remaining = totalLocked - released;
+    // Calculate claimable amount (vested - released) as bigint
+    const claimable = (vestedAmount as bigint) - (released as bigint);
+    const remaining = (totalLocked as bigint) - (released as bigint);
     const cliffEndTime = schedule.start + schedule.cliff;
     const vestingEndTime = schedule.start + schedule.duration;
     const currentTime = BigInt(Math.floor(Date.now() / 1000));
@@ -926,6 +926,8 @@ export async function getUserPurchaseHistory(userAddress: string): Promise<Purch
       try {
         // Get package details for name
         const packageData = await getPackageById(Number(purchase.packageId));
+        const ts = Number(purchase.timestamp);
+        const cachedTxHash = getCachedPurchaseTx(userAddress, ts);
 
         purchaseRecords.push({
           packageId: Number(purchase.packageId),
@@ -937,9 +939,9 @@ export async function getUserPurchaseHistory(userAddress: string): Promise<Purch
           lpTokens: purchase.lpTokens,
           referrer: purchase.referrer,
           referralReward: purchase.referralReward,
-          timestamp: Number(purchase.timestamp),
+          timestamp: ts,
           blockNumber: 0, // Not available from view function
-          transactionHash: '', // Not available from view function
+          transactionHash: cachedTxHash || '', // Hydrated from event cache if available
         });
       } catch (err) {
         console.warn('Error processing purchase record:', err);
@@ -966,11 +968,13 @@ export async function getUserRedemptionHistory(userAddress: string): Promise<Arr
     // Convert to expected format
     const redemptions: Array<{ lpAmount: bigint; timestamp: number; blockNumber: number; transactionHash: string }> = [];
     for (let i = 0; i < amounts.length; i++) {
+      const ts = Number(timestamps[i]);
+      const cachedTxHash = getCachedRedemptionTx(userAddress, ts);
       redemptions.push({
         lpAmount: amounts[i],
-        timestamp: Number(timestamps[i]),
+        timestamp: ts,
         blockNumber: 0, // Not available from view function
-        transactionHash: '', // Not available from view function
+        transactionHash: cachedTxHash || '', // Hydrated from event cache if available
       });
     }
 
@@ -1321,7 +1325,13 @@ export async function getReferralStats(userAddress: string): Promise<{
     console.log('Contract stats not available, using cached history data...');
     const referralHistory = await getUserReferralHistory(userAddress);
 
-    const stats = {
+    const stats: {
+      totalRewards: bigint;
+      referralCount: number;
+      averageReward: bigint;
+      lastReferralDate: number | null;
+      topReferralReward: bigint;
+    } = {
       totalRewards: 0n,
       referralCount: 0,
       averageReward: 0n,
@@ -1425,11 +1435,11 @@ export interface PurchaseRecord {
 }
 
 // Constants for event fetching optimization - More conservative settings to avoid rate limits
-const BLOCK_RANGE_LIMIT = 500; // Much smaller chunks to reduce RPC load
-const MAX_RETRIES = 3; // Reduced retries to fail faster
-const RETRY_DELAY_MS = 5000; // Longer base delay to respect rate limits
-const REQUEST_THROTTLE_MS = 2000; // Delay between requests within same query
-const INTER_QUERY_DELAY_MS = 5000; // Longer delay between different query types
+const BLOCK_RANGE_LIMIT = 200; // Even smaller chunks to reduce RPC load further
+const MAX_RETRIES = 3; // Keep retries limited
+const RETRY_DELAY_MS = 10000; // Longer base delay to respect rate limits
+const REQUEST_THROTTLE_MS = 2500; // Slightly longer delay between page requests
+const INTER_QUERY_DELAY_MS = 7000; // Longer delay between different query types
 const CACHE_DURATION_MS = 30 * 60 * 1000; // Longer cache duration to reduce queries
 
 // Enhanced cache with localStorage persistence
@@ -1980,7 +1990,18 @@ export function subscribeToPackagePurchases(
 ) {
   const contracts = getContracts();
 
-  contracts.packageManager.on('Purchased', (buyer, packageId, usdtAmount, totalTokens, vestTokens, poolTokens, lpTokens, referrer, referralReward, _event) => {
+  contracts.packageManager.on('Purchased', (
+    buyer,
+    packageId,
+    usdtAmount,
+    _totalTokens,
+    _vestTokens,
+    _poolTokens,
+    _lpTokens,
+    _referrer,
+    _referralReward,
+    _event
+  ) => {
     callback(Number(packageId), buyer, usdtAmount);
   });
 
@@ -2003,6 +2024,143 @@ export function subscribeToVestingClaims(
   return () => {
     contracts.vestingVault.removeAllListeners('Claimed');
   };
+}
+
+// --------- Lightweight TX hash cache for events (per user, per timestamp) ---------
+const PURCHASE_TX_CACHE_KEY = 'blockcoop_purchase_txhash';
+const REDEMPTION_TX_CACHE_KEY = 'blockcoop_redemption_txhash';
+
+function setCachedTx(key: string, user: string, timestamp: number, txHash: string): void {
+  try {
+    const data = loadFromLocalStorage(key) || {};
+    const userKey = user.toLowerCase();
+    if (!data[userKey]) data[userKey] = {};
+    data[userKey][String(timestamp)] = txHash;
+    saveToLocalStorage(key, data);
+  } catch (e) {
+    console.warn('Failed to cache tx hash', key, e);
+  }
+}
+
+function getCachedTx(key: string, user: string, timestamp: number): string | null {
+  try {
+    const data = loadFromLocalStorage(key) || {};
+    const userKey = user.toLowerCase();
+    return data[userKey]?.[String(timestamp)] || null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedPurchaseTx(user: string, timestamp: number, txHash: string): void {
+  setCachedTx(PURCHASE_TX_CACHE_KEY, user, timestamp, txHash);
+}
+
+export function getCachedPurchaseTx(user: string, timestamp: number): string | null {
+  return getCachedTx(PURCHASE_TX_CACHE_KEY, user, timestamp);
+}
+
+export function setCachedRedemptionTx(user: string, timestamp: number, txHash: string): void {
+  setCachedTx(REDEMPTION_TX_CACHE_KEY, user, timestamp, txHash);
+}
+
+export function getCachedRedemptionTx(user: string, timestamp: number): string | null {
+  return getCachedTx(REDEMPTION_TX_CACHE_KEY, user, timestamp);
+}
+
+// --------- Event subscriptions with tx hash enrichment ---------
+export function subscribeToPurchasesWithHash(
+  callback: (payload: {
+    buyer: string;
+    packageId: number;
+    usdtAmount: bigint;
+    totalTokens: bigint;
+    vestTokens: bigint;
+    poolTokens: bigint;
+    lpTokens: bigint;
+    referrer: string;
+    referralReward: bigint;
+    transactionHash: string;
+    blockNumber: number;
+    timestamp: number;
+  }) => void
+) {
+  const contracts = getContracts();
+  const provider = getProvider();
+
+  const handler = async (
+    buyer: string,
+    packageId: bigint,
+    usdtAmount: bigint,
+    totalTokens: bigint,
+    vestTokens: bigint,
+    poolTokens: bigint,
+    lpTokens: bigint,
+    referrer: string,
+    referralReward: bigint,
+    event: any
+  ) => {
+    try {
+      const block = await provider.getBlock(event.blockNumber);
+      const timestamp = block?.timestamp ? Number(block.timestamp) : Math.floor(Date.now() / 1000);
+      const txHash = event.transactionHash as string;
+      // Cache by user+timestamp
+      setCachedPurchaseTx(buyer, timestamp, txHash);
+
+      callback({
+        buyer,
+        packageId: Number(packageId),
+        usdtAmount,
+        totalTokens,
+        vestTokens,
+        poolTokens,
+        lpTokens,
+        referrer,
+        referralReward,
+        transactionHash: txHash,
+        blockNumber: event.blockNumber,
+        timestamp,
+      });
+    } catch (e) {
+      console.warn('subscribeToPurchasesWithHash handler error:', e);
+    }
+  };
+
+  contracts.packageManager.on('Purchased', handler);
+  return () => contracts.packageManager.off('Purchased', handler);
+}
+
+export function subscribeToRedemptionsWithHash(
+  callback: (payload: {
+    user: string;
+    lpAmount: bigint;
+    transactionHash: string;
+    blockNumber: number;
+    timestamp: number;
+  }) => void
+) {
+  const contracts = getContracts();
+  const provider = getProvider();
+
+  const handler = async (
+    user: string,
+    lpAmount: bigint,
+    event: any
+  ) => {
+    try {
+      const block = await provider.getBlock(event.blockNumber);
+      const timestamp = block?.timestamp ? Number(block.timestamp) : Math.floor(Date.now() / 1000);
+      const txHash = event.transactionHash as string;
+      setCachedRedemptionTx(user, timestamp, txHash);
+
+      callback({ user, lpAmount, transactionHash: txHash, blockNumber: event.blockNumber, timestamp });
+    } catch (e) {
+      console.warn('subscribeToRedemptionsWithHash handler error:', e);
+    }
+  };
+
+  contracts.packageManager.on('Redeemed', handler);
+  return () => contracts.packageManager.off('Redeemed', handler);
 }
 
 // Network and connection utilities

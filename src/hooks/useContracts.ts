@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { Signer, ContractTransactionResponse, ethers } from 'ethers';
+import { ContractTransactionResponse, ethers } from 'ethers';
 import { useWeb3 } from '../providers/Web3Provider';
 import { useRefreshListener } from '../contexts/RefreshContext';
 import {
@@ -15,14 +15,18 @@ import {
   getVestingInfo,
   getUserPurchaseHistory,
   getUserRedemptionHistory,
+  // getUserPurchaseHistoryFromEvents,
+  // getUserRedemptionHistoryFromEvents,
   getUserPortfolioStats,
   formatTokenAmount,
+  subscribeToPurchasesWithHash,
+  subscribeToRedemptionsWithHash,
 } from '../lib/contracts';
 import {
   correctUserStats,
   CorrectedUserStats,
   createCorrectionNotice,
-  needsCorrection,
+  // needsCorrection,
   isPurchaseBeforeFix,
   isPurchaseWithExchangeRateIssue,
   getExchangeRateCorrection,
@@ -221,10 +225,10 @@ function applyCorrectionToBigInt(value: bigint, correctionFactor: number): bigin
 export function useEnhancedBalances() {
   const { balances, formattedBalances, loading: balancesLoading, error: balancesError, refetch: refetchBalances } = useBalances();
   const { stats, loading: statsLoading, error: statsError } = useUserPortfolioStats();
-  const { correctedStats, formattedCorrectedStats } = useCorrectedPortfolioStats();
+  const { correctedStats } = useCorrectedPortfolioStats();
 
   // Apply correction to actual wallet balances if needed - check each balance independently
-  const getCorrectedWalletBalance = (rawBalance: bigint, tokenType: 'share' | 'usdt' | 'lp'): string => {
+  const getCorrectedWalletBalance = (rawBalance: bigint, tokenType: 'share' | 'lp' | 'usdt'): string => {
     if (tokenType === 'usdt') {
       // Use consistent 18 decimals for V2 architecture
       return formatTokenAmount(rawBalance, 18, 2);
@@ -244,7 +248,7 @@ export function useEnhancedBalances() {
       }
     }
 
-    return formatTokenAmount(rawBalance, 18, tokenType === 'usdt' ? 2 : 4);
+    return formatTokenAmount(rawBalance, 18, 4);
   };
 
   // Check if any wallet balance corrections were applied
@@ -253,7 +257,6 @@ export function useEnhancedBalances() {
 
   // Use corrected stats for portfolio totals, but corrected wallet balances for actual balances
   const correctedTotalTokens = correctedStats?.totalTokensReceived || stats?.totalTokensReceived || 0n;
-  const correctedLPTokens = correctedStats?.totalLPTokens || stats?.totalLPTokens || 0n;
 
   const enhancedFormattedBalances = {
     ...formattedBalances,
@@ -272,7 +275,7 @@ export function useEnhancedBalances() {
     loading: balancesLoading || statsLoading,
     error: balancesError || statsError,
     refetch: refetchBalances,
-    correctionApplied: walletCorrectionApplied || (formattedCorrectedStats?.correctionApplied || false),
+    correctionApplied: walletCorrectionApplied || Boolean(correctedStats?.correctionApplied),
   };
 }
 
@@ -388,7 +391,6 @@ export function useVesting() {
 // Hook for corrected vesting that applies portfolio corrections to vesting amounts
 export function useCorrectedVesting() {
   const { vestingInfo, formattedVestingInfo, loading, error, fetchVestingInfo, claimVested, refetch } = useVesting();
-  const { formattedCorrectedStats } = useCorrectedPortfolioStats();
 
   // Apply corrections to vesting amounts if needed
   const correctedVestingInfo = useMemo(() => {
@@ -457,7 +459,7 @@ export function useCorrectedVesting() {
 
 // Hook for transaction operations
 export function useTransactions() {
-  const { signer, contracts, account, isCorrectNetwork } = useWeb3();
+  const { signer, account, isCorrectNetwork } = useWeb3();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -584,7 +586,7 @@ export function useCurrentMarketPrice() {
   }, [contracts, isConnected]);
 
   // Auto-refresh on purchase/redemption events
-  useRefreshListener('refreshMarketPrice', fetchMarketPrice);
+  useRefreshListener('refreshPurchaseHistory', fetchMarketPrice);
 
   useEffect(() => {
     fetchMarketPrice();
@@ -600,7 +602,7 @@ export function useCurrentMarketPrice() {
 
 // Hook for user purchase history
 export function usePurchaseHistory() {
-  const { account, contracts, isConnected } = useWeb3();
+  const { account, isConnected } = useWeb3();
   const { marketPrice } = useCurrentMarketPrice();
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [redemptions, setRedemptions] = useState<Array<{
@@ -625,7 +627,7 @@ export function usePurchaseHistory() {
     try {
       console.log('Fetching purchase and redemption history...');
 
-      // Fetch purchase and redemption history with individual error handling
+      // Fetch purchase and redemption history via view functions only (avoid rate-limited logs)
       const [purchaseResult, redemptionResult] = await Promise.allSettled([
         getUserPurchaseHistory(account),
         getUserRedemptionHistory(account),
@@ -640,6 +642,8 @@ export function usePurchaseHistory() {
         console.error('Failed to fetch purchase history:', purchaseResult.reason);
       }
 
+      // Skip event enrichment to avoid RPC logs rate limits
+
       // Handle redemption history result
       let redemptionHistory: Array<{
         lpAmount: bigint;
@@ -653,6 +657,8 @@ export function usePurchaseHistory() {
       } else {
         console.error('Failed to fetch redemption history:', redemptionResult.reason);
       }
+
+      // Skip event enrichment to avoid RPC logs rate limits
 
       // Apply corrections to purchase history
       const correctedPurchases = purchaseHistory.map(applyCorrectionToPurchase);
@@ -685,6 +691,26 @@ export function usePurchaseHistory() {
 
   // Auto-refresh on purchase/redemption events
   useRefreshListener('refreshPurchaseHistory', fetchPurchaseHistory);
+
+  // Live event subscriptions to hydrate tx hashes for future records
+  useEffect(() => {
+    if (!account) return;
+
+    const offPurchase = subscribeToPurchasesWithHash(() => {
+      // Refresh purchase history to pick up cached tx hashes
+      fetchPurchaseHistory();
+    });
+
+    const offRedemption = subscribeToRedemptionsWithHash(() => {
+      // Refresh redemption history to pick up cached tx hashes
+      fetchPurchaseHistory();
+    });
+
+    return () => {
+      offPurchase?.();
+      offRedemption?.();
+    };
+  }, [account, fetchPurchaseHistory]);
 
   // Auto-refresh when account changes
   useEffect(() => {
@@ -875,7 +901,7 @@ export function useCorrectedPortfolioStats() {
 
       if (userStats) {
         // Apply correction logic
-        const corrected = correctUserStats(userStats, purchaseHistory);
+        const corrected = correctUserStats(userStats as any, (purchaseHistory as unknown) as any);
         setCorrectedStats(corrected);
 
         if (corrected.correctionApplied) {

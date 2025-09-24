@@ -44,3 +44,4 @@ Your code now has `getContractsWithFailover()` function that automatically tries
 ## Prevention
 The new failover system will automatically switch to working RPC endpoints in the future, preventing similar issues.
 
+

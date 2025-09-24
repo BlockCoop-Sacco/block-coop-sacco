@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { getContracts } from '../../lib/contracts';
+import { getContracts, getGlobalTargetPrice } from '../../lib/contracts';
 import { useWeb3 } from '../../providers/Web3Provider';
 import { validateWalletForTransaction } from '../../lib/walletValidation';
 import { useWalletRefresh, shouldAttemptWalletRefresh } from '../../lib/walletRefresh';
@@ -47,8 +47,14 @@ export function GlobalTargetPriceManager({ onSuccess }: GlobalTargetPriceManager
           return;
         }
 
-        const globalTargetPrice = await contractsToUse.globalTargetPrice();
-        const decimal = globalTargetPriceToDecimal(globalTargetPrice);
+        // Graceful read with fallback
+        let price: bigint;
+        try {
+          price = await contractsToUse.globalTargetPrice();
+        } catch (e) {
+          price = await getGlobalTargetPrice();
+        }
+        const decimal = globalTargetPriceToDecimal(price);
         setCurrentGlobalTargetPrice(decimal);
       } catch (error: any) {
         console.error('Error loading global target price:', error);

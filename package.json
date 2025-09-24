@@ -19,7 +19,10 @@
     "deploy:cpanel": "./scripts/prepare-cpanel-deployment.sh",
     "deploy:pm-proxy": "npx hardhat run scripts/deploy-package-manager-proxy.cjs --network bsctestnet",
     "setup:pm-roles": "npx hardhat run scripts/setup-package-manager-roles.cjs --network bsctestnet",
-    "upgrade:pm-proxy": "npx hardhat run scripts/upgrade-package-manager.cjs --network bsctestnet"
+    "upgrade:pm-proxy": "npx hardhat run scripts/upgrade-package-manager.cjs --network bsctestnet",
+    "deploy:full:mainnet": "npx hardhat run scripts/deploy-full-suite-mainnet.cjs --network bscmainnet",
+    "env:update": "node scripts/update-env-from-deployments.cjs .env --prune --remove-zero",
+    "grant:admin": "ADMIN_TO_GRANT=$ADMIN_TO_GRANT npx hardhat run scripts/grant-full-admin.cjs --network bscmainnet"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

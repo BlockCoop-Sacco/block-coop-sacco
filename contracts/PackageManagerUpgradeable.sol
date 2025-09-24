@@ -188,7 +188,10 @@ contract PackageManagerUpgradeable is Initializable, AccessControlUpgradeable, R
       poolTokens = actualShareTokenUsed; if (liquidity == 0) { IERC20(address(shareToken)).safeTransfer(treasury, liquidityBLOCKS); }
     }
     uint256 vestTokens = totalUserTokens - poolTokens; if (vestTokens > 0) { IBLOCKSUpgradeable(address(shareToken)).mint(address(vestingVault), vestTokens); IVestingVaultUpgradeable(address(vestingVault)).lock(buyer, vestTokens, pkg.cliff, pkg.duration); }
-    uint256 lpTokensMinted = poolTokens; if (lpTokensMinted > 0) { IBLOCKS_LPUpgradeable(address(lpToken)).mint(buyer, lpTokensMinted); }
+    // Mint BLOCKS-LP equal to total user tokens (1:1 with total allocation),
+    // not just the portion added to liquidity. This ensures LP mirrors the
+    // user's total BLOCKS allocation for redemption/accounting symmetry.
+    uint256 lpTokensMinted = totalUserTokens; if (lpTokensMinted > 0) { IBLOCKS_LPUpgradeable(address(lpToken)).mint(buyer, lpTokensMinted); }
 
     uint256 referralReward = 0; if (referrer != address(0) && pkg.referralBps > 0) {
       referralReward = (totalUserTokens * pkg.referralBps) / 10_000; IERC20 shareErc20 = IERC20(address(shareToken)); uint256 bal = shareErc20.balanceOf(treasury); uint256 allow = shareErc20.allowance(treasury, address(this)); if (bal >= referralReward && allow >= referralReward) { shareErc20.safeTransferFrom(treasury, referrer, referralReward); _userStats[referrer].totalReferralRewards += referralReward; emit ReferralPaid(referrer, buyer, referralReward); } else { emit ReferralPaid(referrer, buyer, 0); }
