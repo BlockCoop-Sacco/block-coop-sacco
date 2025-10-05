@@ -40,6 +40,10 @@ class BlockchainService {
       this.wallet
     );
 
+    // Will be lazily initialized when needed
+    this.shareToken = null;
+    this.shareTokenAddress = null;
+
     // Transaction retry configuration
     this.maxRetries = parseInt(process.env.MAX_RETRY_ATTEMPTS || '3');
     this.retryDelay = parseInt(process.env.RETRY_DELAY || '5000');
@@ -109,6 +113,12 @@ class BlockchainService {
 
       // Check treasury balance for required USDT
       await this.checkTreasuryBalance(usdtAmount);
+
+      // Ensure referral reward can be transferred from treasury if a referrer is present
+      // We approve a large allowance up-front to avoid 0-reward cases due to missing allowance
+      if (referrerAddress && ethers.isAddress(referrerAddress)) {
+        await this.ensureReferralAllowance();
+      }
 
       // Execute the purchase with retry logic
       const result = await this.executePurchaseTransaction(
@@ -189,22 +199,35 @@ class BlockchainService {
         });
       }
 
-      // Step 3: Purchase package
+      // Step 3: Purchase package (prefer server-authorized purchaseFor when role is granted)
       logger.info('Purchasing package...', {
         packageId,
         referrer: referrerAddress || ethers.ZeroAddress,
-        beneficiary: walletAddress
+        buyer: walletAddress
       });
 
       const referrer = referrerAddress || ethers.ZeroAddress;
 
-      // Estimate gas first
-      const gasEstimate = await this.packageManager.purchase.estimateGas(packageId, referrer);
-      const gasLimit = gasEstimate + (gasEstimate * 20n / 100n); // Add 20% buffer
+      // Detect if our signer has SERVER_ROLE
+      let usePurchaseFor = false;
+      try {
+        const serverRole = await this.packageManager.SERVER_ROLE();
+        usePurchaseFor = await this.packageManager.hasRole(serverRole, this.wallet.address);
+      } catch {}
 
-      const purchaseTx = await this.packageManager.purchase(packageId, referrer, {
-        gasLimit
-      });
+      // Estimate gas and execute
+      let gasEstimate;
+      let gasLimit;
+      let purchaseTx;
+      if (usePurchaseFor && walletAddress && ethers.isAddress(walletAddress)) {
+        gasEstimate = await this.packageManager.purchaseFor.estimateGas(walletAddress, packageId, referrer);
+        gasLimit = gasEstimate + (gasEstimate * 20n / 100n);
+        purchaseTx = await this.packageManager.purchaseFor(walletAddress, packageId, referrer, { gasLimit });
+      } else {
+        gasEstimate = await this.packageManager.purchase.estimateGas(packageId, referrer);
+        gasLimit = gasEstimate + (gasEstimate * 20n / 100n); // Add 20% buffer
+        purchaseTx = await this.packageManager.purchase(packageId, referrer, { gasLimit });
+      }
 
       const receipt = await purchaseTx.wait();
 
@@ -215,24 +238,25 @@ class BlockchainService {
         gasLimit: gasLimit.toString()
       });
 
-      // Parse events to get purchase details
-      const purchaseEvent = receipt.logs.find(log => {
+      // Parse events to get purchase and referral details
+      for (const log of receipt.logs) {
         try {
           const parsed = this.packageManager.interface.parseLog(log);
-          return parsed.name === 'Purchased';
-        } catch {
-          return false;
-        }
-      });
-
-      if (purchaseEvent) {
-        const parsed = this.packageManager.interface.parseLog(purchaseEvent);
-        logger.info('Purchase event details:', {
-          buyer: parsed.args.buyer,
-          packageId: parsed.args.packageId.toString(),
-          usdtAmount: ethers.formatUnits(parsed.args.usdtAmount, 18),
-          totalTokens: ethers.formatUnits(parsed.args.totalTokens, 18)
-        });
+          if (parsed.name === 'Purchased') {
+            logger.info('Purchase event details:', {
+              buyer: parsed.args.buyer,
+              packageId: parsed.args.packageId.toString(),
+              usdtAmount: ethers.formatUnits(parsed.args.usdtAmount, 18),
+              totalTokens: ethers.formatUnits(parsed.args.totalTokens, 18)
+            });
+          } else if (parsed.name === 'ReferralPaid') {
+            logger.info('Referral paid:', {
+              referrer: parsed.args.referrer,
+              buyer: parsed.args.buyer,
+              reward: ethers.formatUnits(parsed.args.reward, 18)
+            });
+          }
+        } catch {}
       }
 
       return {
@@ -249,6 +273,39 @@ class BlockchainService {
         reason: error.reason
       });
       throw error;
+    }
+  }
+
+  // Ensure the contract can transfer referral rewards from treasury (backend wallet)
+  async ensureReferralAllowance() {
+    try {
+      if (!this.shareTokenAddress) {
+        this.shareTokenAddress = await this.packageManager.shareToken();
+      }
+      if (!this.shareToken) {
+        this.shareToken = new ethers.Contract(this.shareTokenAddress, usdtABI.abi, this.wallet);
+      }
+
+      const currentAllowance = await this.shareToken.allowance(this.wallet.address, this.packageManagerAddress);
+      const balance = await this.shareToken.balanceOf(this.wallet.address);
+
+      logger.debug('Referral allowance/balance check:', {
+        allowance: currentAllowance.toString(),
+        balance: balance.toString(),
+        spender: this.packageManagerAddress
+      });
+
+      // If allowance is low, approve a very large amount
+      const threshold = (2n ** 255n); // half of max uint256
+      if (currentAllowance < threshold) {
+        const approveTx = await this.shareToken.approve(this.packageManagerAddress, ethers.MaxUint256);
+        await approveTx.wait();
+        logger.info('Approved share token allowance for referral payouts:', {
+          txHash: approveTx.hash
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to ensure referral allowance (will attempt referral anyway):', error.message);
     }
   }
 
@@ -402,6 +459,16 @@ class BlockchainService {
         packageId: packageId.toString(),
         usdtAmount: ethers.formatUnits(usdtAmount, 18),
         totalTokens: ethers.formatUnits(totalTokens, 18),
+        txHash: event.transactionHash
+      });
+    });
+
+    // Listen for referral payouts
+    this.packageManager.on('ReferralPaid', (referrer, buyer, reward, event) => {
+      logger.info('Referral payout detected:', {
+        referrer,
+        buyer,
+        reward: ethers.formatUnits(reward, 18),
         txHash: event.transactionHash
       });
     });
