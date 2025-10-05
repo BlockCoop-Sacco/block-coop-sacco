@@ -9,7 +9,8 @@ class RecoveryService {
     this.isRunning = false;
     this.maxRetryAttempts = parseInt(process.env.MAX_RETRY_ATTEMPTS || '3');
     this.retryDelay = parseInt(process.env.RETRY_DELAY || '300000'); // 5 minutes
-    this.recoveryEnabled = process.env.RECOVERY_ENABLED === 'true';
+    // Default to enabled unless explicitly set to 'false'
+    this.recoveryEnabled = process.env.RECOVERY_ENABLED !== 'false';
     
     if (this.recoveryEnabled) {
       this.startRecoveryScheduler();
@@ -80,6 +81,7 @@ class RecoveryService {
         where: {
           status: 'completed', // M-Pesa payment completed
           blockchainTxHash: null, // But no blockchain transaction
+          blockchainProcessing: false, // not currently being processed
           retryCount: {
             [Op.lt]: this.maxRetryAttempts
           },

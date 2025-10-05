@@ -21,7 +21,7 @@ export const MpesaTransaction = sequelize.define('MpesaTransaction', {
     type: DataTypes.INTEGER,
     allowNull: false,
     validate: {
-      min: 1
+      min: 0
     }
   },
   
@@ -101,6 +101,13 @@ export const MpesaTransaction = sequelize.define('MpesaTransaction', {
     validate: {
       is: /^0x[a-fA-F0-9]{64}$/
     }
+  },
+  
+  // In-flight blockchain processing lock to prevent duplicate on-chain purchases
+  blockchainProcessing: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   },
   
   // Error tracking

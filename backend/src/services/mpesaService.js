@@ -98,7 +98,7 @@ class MpesaService {
         PartyA: phoneNumber,
         PartyB: this.businessShortCode,
         PhoneNumber: phoneNumber,
-        CallBackURL: 'https://api.blockcoopsacco.com/api/mpesa/callback',
+        CallBackURL: this.callbackUrl,
         AccountReference: `PKG${packageId}-${transaction.id}`,
         TransactionDesc: `BlockCoop Package ${packageId} Purchase`
       };
@@ -106,7 +106,10 @@ class MpesaService {
       logger.info('Initiating STK Push:', {
         transactionId: transaction.id,
         amount: kesAmount,
-        phoneNumber: phoneNumber.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1***$4')
+        phoneNumber: phoneNumber.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1***$4'),
+        callbackUrl: this.callbackUrl,
+        timeoutUrl: this.timeoutUrl,
+        mpesaBaseUrl: this.baseUrl
       });
 
       // Send STK Push request
@@ -187,26 +190,28 @@ class MpesaService {
         }
       });
 
-      // Update transaction status based on response
-      let status = 'pending';
+      // Non-destructive status handling for query:
+      // Only mark completed when ResultCode === '0'.
+      // For other codes, keep the persisted status as-is; surface the query status in response.
       if (response.data.ResultCode === '0') {
-        status = 'completed';
-      } else if (response.data.ResultCode !== '1032') { // 1032 means still pending
-        status = 'failed';
+        await transaction.update({
+          status: 'completed',
+          mpesaReceiptNumber: response.data.MpesaReceiptNumber || null,
+          resultCode: response.data.ResultCode,
+          resultDesc: response.data.ResultDesc
+        });
+      } else {
+        await transaction.update({
+          resultCode: response.data.ResultCode,
+          resultDesc: response.data.ResultDesc
+        });
       }
-
-      await transaction.update({
-        status,
-        mpesaReceiptNumber: response.data.MpesaReceiptNumber || null,
-        resultCode: response.data.ResultCode,
-        resultDesc: response.data.ResultDesc
-      });
 
       return {
         success: true,
         transaction: {
           id: transaction.id,
-          status: transaction.status,
+          status: response.data.ResultCode === '0' ? 'completed' : (transaction.status || 'pending'),
           amount: {
             usd: transaction.amountUsd,
             kes: transaction.amountKes

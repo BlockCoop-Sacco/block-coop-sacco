@@ -19,8 +19,8 @@ router.post('/initiate-payment',
       .matches(/^0x[a-fA-F0-9]{40}$/)
       .withMessage('Invalid wallet address format'),
     body('packageId')
-      .isInt({ min: 1 })
-      .withMessage('Package ID must be a positive integer'),
+      .isInt({ min: 0 })
+      .withMessage('Package ID must be a non-negative integer'),
     body('phoneNumber')
       .matches(/^254[0-9]{9}$/)
       .withMessage('Phone number must be in Kenyan format (254XXXXXXXXX)'),
@@ -131,7 +131,8 @@ router.post('/callback', asyncHandler(async (req, res) => {
 
   const { Body } = req.body;
   if (!Body || !Body.stkCallback) {
-    return res.status(400).json({ error: 'Invalid callback format' });
+    // Be lenient for provider validation pings
+    return res.json({ ResultCode: 0, ResultDesc: 'OK' });
   }
 
   const callback = Body.stkCallback;
@@ -141,7 +142,8 @@ router.post('/callback', asyncHandler(async (req, res) => {
   const transaction = await MpesaTransaction.findByCheckoutRequestId(CheckoutRequestID);
   if (!transaction) {
     logger.warn('Transaction not found for callback:', CheckoutRequestID);
-    return res.status(404).json({ error: 'Transaction not found' });
+    // Acknowledge to provider regardless
+    return res.json({ ResultCode: 0, ResultDesc: 'OK' });
   }
 
   // Process callback based on result code
@@ -158,8 +160,30 @@ router.post('/callback', asyncHandler(async (req, res) => {
       amount: transaction.amountKes
     });
 
-    // Trigger blockchain transaction
+    // Idempotency: prevent duplicate on-chain purchases from duplicate callbacks
     try {
+      // If already processed, acknowledge and skip
+      if (transaction.blockchainTxHash) {
+        logger.info('Duplicate callback: blockchain transaction already exists for this M-Pesa transaction', {
+          transactionId: transaction.id,
+          blockchainTxHash: transaction.blockchainTxHash
+        });
+        return res.json({ ResultCode: 0, ResultDesc: 'OK' });
+      }
+
+      // Try to acquire processing lock atomically
+      const [updated] = await MpesaTransaction.update(
+        { blockchainProcessing: true },
+        { where: { id: transaction.id, blockchainProcessing: false, blockchainTxHash: null } }
+      );
+
+      if (updated === 0) {
+        logger.info('Purchase already in progress or completed, skipping duplicate processing', {
+          transactionId: transaction.id
+        });
+        return res.json({ ResultCode: 0, ResultDesc: 'OK' });
+      }
+
       logger.info('Initiating blockchain purchase for completed M-Pesa payment:', {
         transactionId: transaction.id,
         walletAddress: transaction.walletAddress,
@@ -176,9 +200,13 @@ router.post('/callback', asyncHandler(async (req, res) => {
         transactionId: transaction.id,
         error: blockchainError.message
       });
-
       // Don't fail the callback - the M-Pesa payment was successful
       // The blockchain transaction will be retried by the recovery system
+    } finally {
+      // Clear processing flag regardless; blockchainService updates hash/status on success
+      try {
+        await transaction.update({ blockchainProcessing: false });
+      } catch {}
     }
 
   } else {
@@ -192,14 +220,30 @@ router.post('/callback', asyncHandler(async (req, res) => {
     });
   }
 
-  res.json({ success: true });
+  res.json({ ResultCode: 0, ResultDesc: 'OK' });
 }));
+
+// Callback validation endpoints (Safaricom may ping via GET/HEAD)
+router.get('/callback', (req, res) => {
+  res.json({ success: true, message: 'Callback endpoint is reachable (GET)' });
+});
+router.head('/callback', (req, res) => {
+  res.status(200).end();
+});
 
 // Timeout callback endpoint (Daraja can be configured to call this)
 router.post('/timeout', asyncHandler(async (req, res) => {
   logger.warn('M-Pesa timeout callback received:', req.body);
   res.json({ success: true });
 }));
+
+// Timeout validation endpoints
+router.get('/timeout', (req, res) => {
+  res.json({ success: true, message: 'Timeout endpoint is reachable (GET)' });
+});
+router.head('/timeout', (req, res) => {
+  res.status(200).end();
+});
 
 
 // Recovery endpoints
