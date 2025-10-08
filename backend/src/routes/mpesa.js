@@ -19,8 +19,8 @@ router.post('/initiate-payment',
       .matches(/^0x[a-fA-F0-9]{40}$/)
       .withMessage('Invalid wallet address format'),
     body('packageId')
-      .isInt({ min: 0 })
-      .withMessage('Package ID must be a non-negative integer'),
+      .isInt({ min: 1 })
+      .withMessage('Package ID must be a positive integer'),
     body('phoneNumber')
       .matches(/^254[0-9]{9}$/)
       .withMessage('Phone number must be in Kenyan format (254XXXXXXXXX)'),

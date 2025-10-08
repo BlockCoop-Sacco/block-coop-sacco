@@ -109,7 +109,8 @@ class MpesaService {
         phoneNumber: phoneNumber.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1***$4'),
         callbackUrl: this.callbackUrl,
         timeoutUrl: this.timeoutUrl,
-        mpesaBaseUrl: this.baseUrl
+        mpesaBaseUrl: this.baseUrl,
+        packageId
       });
 
       // Send STK Push request
