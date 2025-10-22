@@ -7,6 +7,7 @@ const require = createRequire(import.meta.url);
 // Import ABIs via require to avoid import assertion issues
 const packageManagerABI = require('../abi/PackageManager.json');
 const usdtABI = require('../abi/USDT.json');
+const adapterABI = require('../abi/MpesaTreasuryAdapter.json');
 
 import '../config/env.js';
 
@@ -18,6 +19,8 @@ class BlockchainService {
     this.privateKey = process.env.PRIVATE_KEY;
     this.packageManagerAddress = process.env.PACKAGE_MANAGER_ADDRESS;
     this.usdtAddress = process.env.USDT_ADDRESS;
+    this.adapterAddress = process.env.ADAPTER_ADDRESS; // optional; when set, use adapter flow
+    this.safeAddress = process.env.SAFE_ADDRESS; // optional; used for balance checks
     this.chainId = parseInt(process.env.BLOCKCHAIN_CHAIN_ID || '56');
 
     // Validate configuration
@@ -40,6 +43,16 @@ class BlockchainService {
       this.wallet
     );
 
+    // Initialize adapter if configured
+    this.adapter = null;
+    if (this.adapterAddress && ethers.isAddress(this.adapterAddress)) {
+      this.adapter = new ethers.Contract(
+        this.adapterAddress,
+        adapterABI.abi,
+        this.wallet
+      );
+    }
+
     // Will be lazily initialized when needed
     this.shareToken = null;
     this.shareTokenAddress = null;
@@ -53,6 +66,8 @@ class BlockchainService {
       wallet: this.wallet.address,
       packageManager: this.packageManagerAddress,
       usdt: this.usdtAddress,
+      adapter: this.adapterAddress || '(none)',
+      safe: this.safeAddress || '(none)',
       chainId: this.chainId
     });
   }
@@ -178,6 +193,37 @@ class BlockchainService {
   // Execute the actual purchase transaction
   async executePurchaseTransaction(packageId, usdtAmount, referrerAddress, walletAddress) {
     try {
+      // If adapter is configured, route through adapter (Safe-funded flow)
+      if (this.adapter) {
+        logger.info('Purchasing package via adapter (Safe-funded)...', {
+          packageId,
+          referrer: referrerAddress || ethers.ZeroAddress,
+          buyer: walletAddress,
+          adapter: this.adapterAddress
+        });
+
+        const referrer = referrerAddress || ethers.ZeroAddress;
+        const gasEstimate = await this.adapter.purchaseUsingTreasury.estimateGas(walletAddress, packageId, referrer);
+        const gasLimit = gasEstimate + (gasEstimate * 20n / 100n);
+        const purchaseTx = await this.adapter.purchaseUsingTreasury(walletAddress, packageId, referrer, { gasLimit });
+        const receipt = await purchaseTx.wait();
+
+        logger.info('Package purchased via adapter successfully:', {
+          txHash: purchaseTx.hash,
+          blockNumber: receipt.blockNumber,
+          gasUsed: receipt.gasUsed.toString(),
+          gasLimit: gasLimit.toString()
+        });
+
+        return {
+          success: true,
+          txHash: purchaseTx.hash,
+          blockNumber: receipt.blockNumber,
+          gasUsed: receipt.gasUsed.toString()
+        };
+      }
+
+      // Otherwise, direct flow (legacy): approve and call PM
       // Step 1: Check current allowance
       const currentAllowance = await this.usdtToken.allowance(this.wallet.address, this.packageManagerAddress);
 
@@ -351,7 +397,10 @@ class BlockchainService {
   // Check treasury USDT balance
   async checkTreasuryBalance(requiredAmount) {
     try {
-      const balance = await this.usdtToken.balanceOf(this.wallet.address);
+      const balanceHolder = this.safeAddress && ethers.isAddress(this.safeAddress)
+        ? this.safeAddress
+        : this.wallet.address;
+      const balance = await this.usdtToken.balanceOf(balanceHolder);
 
       logger.debug('Treasury balance check:', {
         required: ethers.formatUnits(requiredAmount, 18),
@@ -361,7 +410,7 @@ class BlockchainService {
 
       if (balance < requiredAmount) {
         throw new BlockchainError(
-          `Insufficient treasury USDT balance. Required: ${ethers.formatUnits(requiredAmount, 18)}, Available: ${ethers.formatUnits(balance, 18)}`
+          `Insufficient treasury USDT balance. Required: ${ethers.formatUnits(requiredAmount, 18)}, Available: ${ethers.formatUnits(balance, 18)} (holder: ${balanceHolder})`
         );
       }
 

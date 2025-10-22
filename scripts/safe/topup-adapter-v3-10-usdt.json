@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "chainId": "56",
+  "createdAt": 1760155000000,
+  "meta": {
+    "name": "Top up adapter v3 with 10 USDT",
+    "description": "Transfers 10 USDT from Safe to MpesaTreasuryAdapterV3",
+    "txBuilderVersion": "1.16.3",
+    "createdFromSafeAddress": "0xD04edC3225cEF6e82e50Dc559d38733180743b94",
+    "createdFromOwnerAddress": "",
+    "checksum": ""
+  },
+  "transactions": [
+    {
+      "to": "0x55d398326f99059fF775485246999027B3197955",
+      "value": "0",
+      "data": null,
+      "contractMethod": {
+        "inputs": [
+          { "internalType": "address", "name": "to", "type": "address" },
+          { "internalType": "uint256", "name": "value", "type": "uint256" }
+        ],
+        "name": "transfer",
+        "payable": false
+      },
+      "contractInputsValues": {
+        "to": "0x10675ed7f13804b167854B7bFa158eF6F3027751",
+        "value": "10000000000000000000"
+      }
+    }
+  ]
+}
+
+
+

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Revenue Report - BlockCoop Admin{% endblock %}
+{% block page_title %}Revenue Report{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+  <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+    <div class="flex items-center">
+      <div class="p-3 rounded-full bg-green-100 text-green-600">
+        <i class="fas fa-piggy-bank text-xl"></i>
+      </div>
+      <div class="ml-4">
+        <p class="text-sm font-medium text-gray-600">Treasury USDT Inflows (USD)</p>
+        <p class="text-2xl font-semibold text-gray-900">${{ "{:,.2f}".format((summary.revenue.treasury_usd if summary and summary.revenue else 0) or 0) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+    <div class="flex items-center">
+      <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+        <i class="fas fa-receipt text-xl"></i>
+      </div>
+      <div class="ml-4">
+        <p class="text-sm font-medium text-gray-600">Taxes Collected (USD)</p>
+        <p class="text-2xl font-semibold text-gray-900">${{ "{:,.2f}".format((summary.revenue.taxes_usd if summary and summary.revenue else 0) or 0) }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+  <h3 class="text-lg font-semibold text-gray-900 mb-4">Block Range</h3>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-700">
+    <div>From: {{ summary.range.from if summary and summary.range else 'N/A' }}</div>
+    <div>To: {{ summary.range.to if summary and summary.range else 'N/A' }}</div>
+    <div>Network Connected: {{ 'Yes' if summary and summary.revenue is not none else 'No' }}</div>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6">
+  <h3 class="text-lg font-semibold text-gray-900 mb-4">Referrals Snapshot (BLOCKS)</h3>
+  {% set refs = (summary.referrals if summary and summary.referrals else {}) %}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-700">
+    <div>Total Reward: {{ "{:,.4f}".format(refs.total or 0) }}</div>
+    <div>Decimals: {{ refs.decimals or 18 }}</div>
+    <div>Top Referrers: {{ refs.byReferrer | length if refs.byReferrer else 0 }}</div>
+  </div>
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referrer</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (BLOCKS)</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        {% for ref, v in refs.byReferrer.items() %}
+        <tr>
+          <td class="px-6 py-4 whitespace-nowrap font-mono text-sm">{{ ref }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm">{{ v.count }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm">{{ "{:,.4f}".format(v.reward) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="3" class="px-6 py-6 text-center text-gray-500">No referral activity in range</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+
+
+

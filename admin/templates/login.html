@@ -26,6 +26,10 @@
             <i class="fas fa-info-circle mr-1"></i>
             Default credentials: admin / admin123
         </div>
+        <div class="mt-3 text-sm">
+            <a href="{{ url_for('signup') }}" class="text-blue-600 hover:text-blue-800 mr-4">Create account</a>
+            <a href="{{ url_for('forgot_password') }}" class="text-blue-600 hover:text-blue-800">Forgot password?</a>
+        </div>
     </div>
 </form>
 {% endblock %}

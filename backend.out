@@ -1,0 +1,7 @@
+{"adapter":"0x81303BDCAce02771a924D6CA7512A03Ceabb9043","chainId":56,"level":"info","message":"Blockchain service initialized:","network":"BSC Mainnet","packageManager":"0xc3e986a4FBBEd9f25F74b3dceA942384a654214a","safe":"0xD04edC3225cEF6e82e50Dc559d38733180743b94","service":"mpesa-backend","timestamp":"2025-10-10 02:34:44","usdt":"0x55d398326f99059ff775485246999027b3197955","wallet":"0x842d803eB7d05D6Aa2DdB8c3Eb912e6d97ce31C4"}
+{"level":"info","message":"Recovery service scheduler started","service":"mpesa-backend","timestamp":"2025-10-10 02:34:44"}
+{"level":"info","message":"Database connection established successfully","service":"mpesa-backend","timestamp":"2025-10-10 02:34:44"}
+{"level":"info","message":"Database models synchronized","service":"mpesa-backend","timestamp":"2025-10-10 02:34:46"}
+{"level":"warn","message":"Some indexes may already exist:","service":"mpesa-backend","timestamp":"2025-10-10 02:34:46"}
+{"level":"info","message":"Database indexes created","service":"mpesa-backend","timestamp":"2025-10-10 02:34:46"}
+{"level":"info","message":"Database initialized successfully","service":"mpesa-backend","timestamp":"2025-10-10 02:34:46"}

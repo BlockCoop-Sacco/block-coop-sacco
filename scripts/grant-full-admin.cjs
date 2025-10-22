@@ -11,9 +11,21 @@ async function grantIfMissing(contract, role, target, label) {
     console.log(`   ✅ ${label}: already granted`);
     return true;
   }
-  const tx = await contract.grantRole(role, target);
+  const gwei = (process.env.GAS_PRICE_GWEI || '').trim();
+  const overrides = gwei ? { gasPrice: (await contract.runner.provider).parseUnits ? undefined : undefined } : {};
+  let tx;
+  try {
+    tx = await contract.grantRole(role, target, gwei ? { gasPrice: require('hardhat').ethers.parseUnits(gwei, 'gwei') } : {});
+  } catch (e) {
+    console.log(`   ❌ ${label}: grant send failed: ${e.message || e}`);
+    return false;
+  }
   console.log(`   🔗 ${label}: grant tx ${tx.hash}`);
-  await tx.wait();
+  const receipt = await tx.wait();
+  if (receipt && receipt.status === 0) {
+    console.log(`   ❌ ${label}: tx reverted`);
+    return false;
+  }
   const ok = await contract.hasRole(role, target);
   console.log(`   ${ok ? '✅' : '❌'} ${label}: grant ${ok ? 'confirmed' : 'failed'}`);
   return ok;

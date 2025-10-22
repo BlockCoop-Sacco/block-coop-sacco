@@ -845,6 +845,19 @@ export async function redeemLPTokensWithContractLiquidityRemoval(
   );
 }
 
+// Referral rewards claim helper (stub). Current system pays instantly via ReferralPaid events
+// and updates on-chain stats; no explicit claim txn is required. We keep this for future-proofing.
+export async function claimReferralRewards(userAddress: string): Promise<{ pending: boolean; wait?: () => Promise<void> } | null> {
+  try {
+    // If in future there is a claim function, wire it here using signer
+    // For now, return null to indicate no-op and let UI inform user
+    return null;
+  } catch (error) {
+    console.error('Error claiming referral rewards:', error);
+    throw error;
+  }
+}
+
 // Get redemption preview from smart contract
 export async function getContractRedemptionPreview(
   amount: bigint,

@@ -24,18 +24,6 @@
                 <i class="fas fa-chart-line text-xl"></i>
             </div>
             <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Total Liquidity (KES)</p>
-                <p class="text-2xl font-semibold text-gray-900">KSh {{ "{:,}".format(liquidity_data.total_liquidity_kes or 0) }}</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="bg-white rounded-lg shadow-md p-6 card-hover">
-        <div class="flex items-center">
-            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                <i class="fas fa-layer-group text-xl"></i>
-            </div>
-            <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600">Active Pools</p>
                 <p class="text-2xl font-semibold text-gray-900">{{ liquidity_data.active_pools or 0 }}</p>
             </div>
@@ -48,8 +36,20 @@
                 <i class="fas fa-exchange-alt text-xl"></i>
             </div>
             <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Daily Volume</p>
+                <p class="text-sm font-medium text-gray-600">24h Volume (USD)</p>
                 <p class="text-2xl font-semibold text-gray-900">${{ "{:,.2f}".format(liquidity_data.daily_volume or 0) }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                <i class="fas fa-network-wired text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Latest Block</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ liquidity_data.network.latestBlock if liquidity_data.network else 'N/A' }}</p>
             </div>
         </div>
     </div>
@@ -57,10 +57,10 @@
 
 <!-- Liquidity Pool Information -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <!-- BLOCKS/USDT Pool -->
+    {% for pool in liquidity_data.pools %}
     <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">BLOCKS/USDT Pool</h3>
+            <h3 class="text-lg font-semibold text-gray-900">{{ pool.label }}</h3>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 <i class="fas fa-circle text-green-400 mr-1"></i>Active
             </span>
@@ -69,155 +69,74 @@
         <div class="space-y-4">
             <div class="flex justify-between items-center">
                 <span class="text-sm text-gray-600">Pool Address</span>
-                <span class="text-sm font-mono text-gray-900">0x1234...5678</span>
+                <span class="text-sm font-mono text-gray-900">{{ pool.address[:10] }}...</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Total Supply</span>
-                <span class="text-sm text-gray-900">1,000,000 BLOCKS</span>
+                <span class="text-sm text-gray-600">{{ pool.token0.symbol }} Reserve</span>
+                <span class="text-sm text-gray-900">{{ "{:,.4f}".format(pool.token0.reserve) }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">USDT Reserve</span>
-                <span class="text-sm text-gray-900">$50,000</span>
+                <span class="text-sm text-gray-600">{{ pool.token1.symbol }} Reserve</span>
+                <span class="text-sm text-gray-900">{{ "{:,.4f}".format(pool.token1.reserve) }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">BLOCKS Reserve</span>
-                <span class="text-sm text-gray-900">500,000 BLOCKS</span>
+                <span class="text-sm text-gray-600">TVL (USD)</span>
+                <span class="text-sm text-gray-900">${{ "{:,.2f}".format(pool.tvl_usd or 0) }}</span>
             </div>
             <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">24h Volume</span>
-                <span class="text-sm text-gray-900">$5,000</span>
+                <span class="text-sm text-gray-600">24h Volume (USD)</span>
+                <span class="text-sm text-gray-900">${{ "{:,.2f}".format(pool.volume24h_usd or 0) }}</span>
             </div>
         </div>
     </div>
-    
-    <!-- BLOCKS/BNB Pool -->
+    {% else %}
     <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">BLOCKS/BNB Pool</h3>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <i class="fas fa-circle text-green-400 mr-1"></i>Active
-            </span>
-        </div>
-        
-        <div class="space-y-4">
-            <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Pool Address</span>
-                <span class="text-sm font-mono text-gray-900">0x8765...4321</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Total Supply</span>
-                <span class="text-sm text-gray-900">500,000 BLOCKS</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">BNB Reserve</span>
-                <span class="text-sm text-gray-900">25 BNB</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">BLOCKS Reserve</span>
-                <span class="text-sm text-gray-900">250,000 BLOCKS</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">24h Volume</span>
-                <span class="text-sm text-gray-900">$2,500</span>
-            </div>
-        </div>
+        <p class="text-gray-500">No pools configured. Set BLOCKS_USDT_PAIR/BLOCKS_BNB_PAIR in environment.</p>
     </div>
-</div>
-
-<!-- Liquidity Management Actions -->
-<div class="bg-white rounded-lg shadow-md p-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Liquidity Management</h3>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <button class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-            <i class="fas fa-sync-alt mr-2"></i>
-            Refresh Pool Data
-        </button>
-        
-        <button class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-            <i class="fas fa-chart-bar mr-2"></i>
-            View Analytics
-        </button>
-        
-        <button class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-            <i class="fas fa-download mr-2"></i>
-            Export Data
-        </button>
-    </div>
+    {% endfor %}
 </div>
 
 <!-- Liquidity Chart -->
 <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Liquidity Trends</h3>
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Liquidity Snapshot</h3>
     <canvas id="liquidityChart" width="400" height="200"></canvas>
 </div>
 
-<!-- Integration Notice -->
-<div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-    <div class="flex items-start">
-        <div class="flex-shrink-0">
-            <i class="fas fa-info-circle text-blue-400 text-xl"></i>
-        </div>
-        <div class="ml-3">
-            <h3 class="text-sm font-medium text-blue-800">Blockchain Integration</h3>
-            <div class="mt-2 text-sm text-blue-700">
-                <p>Liquidity pool data is fetched from the blockchain network. To enable real-time data:</p>
-                <ul class="list-disc list-inside mt-2 space-y-1">
-                    <li>Configure BSC RPC endpoint in environment variables</li>
-                    <li>Set up contract addresses for liquidity pools</li>
-                    <li>Enable automatic data refresh intervals</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Liquidity Chart
-    const liquidityCtx = document.getElementById('liquidityChart').getContext('2d');
-    
-    // Sample data - replace with real data from blockchain
-    const liquidityData = {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-        datasets: [{
-            label: 'Total Liquidity (USD)',
-            data: [45000, 48000, 52000, 55000, 58000, 60000],
-            borderColor: '#3B82F6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderWidth: 2,
-            fill: true
-        }, {
-            label: 'Daily Volume (USD)',
-            data: [5000, 5500, 6000, 6500, 7000, 7500],
-            borderColor: '#10B981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            borderWidth: 2,
-            fill: true
-        }]
-    };
-    
-    new Chart(liquidityCtx, {
-        type: 'line',
-        data: liquidityData,
+    // Simple snapshot chart: TVL vs 24h Volume for each pool
+    const pools = {{ liquidity_data.pools | tojson }};
+    const labels = pools.map(p => p.label);
+    const tvl = pools.map(p => p.tvl_usd || 0);
+    const vol = pools.map(p => p.volume24h_usd || 0);
+
+    const ctx = document.getElementById('liquidityChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'TVL (USD)', data: tvl, backgroundColor: '#3B82F6' },
+                { label: '24h Volume (USD)', data: vol, backgroundColor: '#10B981' }
+            ]
+        },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            },
-            plugins: {
-                legend: {
-                    position: 'top'
-                }
-            }
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { position: 'top' } }
         }
     });
 </script>
 {% endblock %}
+
+
+
+
+
+
 
 
 

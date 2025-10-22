@@ -247,25 +247,43 @@ export function useSecondaryMarketSwap() {
       let outputAmount: bigint;
 
       if (inputToken === 'USDT') {
-        // For USDT→BLOCKS, prefer AMM market price when liquidity exists; fallback to target price
-        const hasLiquidity = marketStats?.hasLiquidity;
-        const marketPrice = marketStats?.marketPrice;
-        const priceToUse = hasLiquidity && marketPrice && marketPrice > 0n ? marketPrice : marketStats?.targetPrice;
-        if (!priceToUse || priceToUse === 0n) {
-          throw new Error('Price not available');
+        // Apply swap fee to input before quoting, as contract deducts fee pre-swap
+        const feeBps = BigInt(marketStats?.tradingFee || 0);
+        const tradingFee = (inputAmount * feeBps) / 10000n;
+        const effectiveInput = inputAmount > tradingFee ? (inputAmount - tradingFee) : 0n;
+        if (effectiveInput === 0n) {
+          throw new Error('Input too small after fees');
         }
-        // Convert input amount to 18 decimals if needed, then divide by price (USDT per BLOCKS in 18-dec)
-        const inDecimals = inputToken === 'USDT' ? (usdtInfo?.decimals ?? 18) : 18;
-        const scaleUp = 18 - inDecimals;
-        const amountIn18 = scaleUp > 0 ? inputAmount * (10n ** BigInt(scaleUp)) : inputAmount;
-        outputAmount = (amountIn18 * 10n ** 18n) / priceToUse;
+
+        // Try AMM quote via router.getAmountsOut with direct USDT->BLOCKS path
+        try {
+          const { router } = getContracts();
+          const amountsOut: readonly bigint[] = await router.getAmountsOut(
+            effectiveInput,
+            [appKitConfig.contracts.usdt, appKitConfig.contracts.share]
+          );
+          outputAmount = amountsOut[1];
+        } catch (ammErr) {
+          // Fallback to price-based estimation when router quote fails
+          const hasLiquidity = marketStats?.hasLiquidity;
+          const marketPrice = marketStats?.marketPrice;
+          const priceToUse = hasLiquidity && marketPrice && marketPrice > 0n ? marketPrice : marketStats?.targetPrice;
+          if (!priceToUse || priceToUse === 0n) {
+            throw new Error('Price not available');
+          }
+          // Convert effective input to 18 decimals if needed, then divide by price (USDT per BLOCKS in 18-dec)
+          const inDecimals = usdtInfo?.decimals ?? 18;
+          const scaleUp = 18 - inDecimals;
+          const amountIn18 = scaleUp > 0 ? effectiveInput * (10n ** BigInt(scaleUp)) : effectiveInput;
+          outputAmount = (amountIn18 * 10n ** 18n) / priceToUse;
+        }
       } else {
-        // For BLOCKS→USDT, use contract function
+        // For BLOCKS→USDT, use contract function (contract returns amount after fee)
         outputAmount = await contracts.secondaryMarket.getSwapQuote(inputAmount);
       }
 
-      // Calculate trading fee (applied to input amount)
-      const tradingFee = (inputAmount * BigInt(marketStats?.tradingFee || 100)) / 10000n;
+      // Calculate trading fee on input (for display only)
+      const tradingFee = (inputAmount * BigInt(marketStats?.tradingFee || 0)) / 10000n;
 
       // Calculate minimum output with slippage
       const slippageBps = BigInt(Math.floor(slippagePercent * 100));
@@ -276,8 +294,8 @@ export function useSecondaryMarketSwap() {
         ? Number(outputAmount) / Number(inputAmount)
         : Number(inputAmount) / Number(outputAmount);
 
-      // Calculate price impact (simplified)
-      const priceImpact = 0.1; // This would need more complex calculation in real implementation
+      // Calculate price impact (placeholder)
+      const priceImpact = 0.1;
 
       return {
         inputAmount,

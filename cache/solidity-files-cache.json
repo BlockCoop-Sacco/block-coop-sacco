@@ -46,7 +46,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/access/AccessControl.sol": {
-      "lastModificationDate": 1758150726809,
+      "lastModificationDate": 1758742235925,
       "contentHash": "d0e2c05f09a3aea7cd299bbd4a435ee2",
       "sourceName": "@openzeppelin/contracts/access/AccessControl.sol",
       "solcConfig": {
@@ -88,7 +88,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol": {
-      "lastModificationDate": 1758150727461,
+      "lastModificationDate": 1758742246777,
       "contentHash": "190613e556d509d9e9a0ea43dc5d891d",
       "sourceName": "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
       "solcConfig": {
@@ -126,7 +126,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/Pausable.sol": {
-      "lastModificationDate": 1758150727458,
+      "lastModificationDate": 1758742246663,
       "contentHash": "0d47b53e10b1985efbb396f937626279",
       "sourceName": "@openzeppelin/contracts/utils/Pausable.sol",
       "solcConfig": {
@@ -166,7 +166,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
-      "lastModificationDate": 1758150727382,
+      "lastModificationDate": 1758742245415,
       "contentHash": "9261adf6457863de3e9892f51317ec89",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
       "solcConfig": {
@@ -204,7 +204,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol": {
-      "lastModificationDate": 1758150727471,
+      "lastModificationDate": 1758742246948,
       "contentHash": "1fb9edee1d763745a62d0b1954998792",
       "sourceName": "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
       "solcConfig": {
@@ -245,7 +245,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/Context.sol": {
-      "lastModificationDate": 1758150727093,
+      "lastModificationDate": 1758742238489,
       "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
       "solcConfig": {
@@ -283,7 +283,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol": {
-      "lastModificationDate": 1758150727264,
+      "lastModificationDate": 1758742241514,
       "contentHash": "0906d06dca25210d4696dcef6dad2909",
       "sourceName": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
       "solcConfig": {
@@ -323,7 +323,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/access/IAccessControl.sol": {
-      "lastModificationDate": 1758150727344,
+      "lastModificationDate": 1758742244336,
       "contentHash": "def1e8f7b6cac577cf2600655bf3bdf8",
       "sourceName": "@openzeppelin/contracts/access/IAccessControl.sol",
       "solcConfig": {
@@ -361,7 +361,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol": {
-      "lastModificationDate": 1758150727377,
+      "lastModificationDate": 1758742245286,
       "contentHash": "7074c93b1ea0a122063f26ddd1db1032",
       "sourceName": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
       "solcConfig": {
@@ -399,7 +399,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/interfaces/IERC1363.sol": {
-      "lastModificationDate": 1758150727372,
+      "lastModificationDate": 1758742245114,
       "contentHash": "a7fd0f05e36b0d0a21c75340c9c639ec",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC1363.sol",
       "solcConfig": {
@@ -440,7 +440,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/interfaces/IERC165.sol": {
-      "lastModificationDate": 1758150727376,
+      "lastModificationDate": 1758742245256,
       "contentHash": "947853028399b7de34bcc3704ee06e99",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC165.sol",
       "solcConfig": {
@@ -478,7 +478,7 @@
       "artifacts": []
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/interfaces/IERC20.sol": {
-      "lastModificationDate": 1758150727381,
+      "lastModificationDate": 1758742245392,
       "contentHash": "68620db2da7583d9a4919096ac77f577",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC20.sol",
       "solcConfig": {
@@ -516,7 +516,7 @@
       "artifacts": []
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
-      "lastModificationDate": 1758150727383,
+      "lastModificationDate": 1758742245429,
       "contentHash": "513778b30d2750f5d2b9b19bbcf748a5",
       "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
       "solcConfig": {
@@ -556,7 +556,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol": {
-      "lastModificationDate": 1758150727278,
+      "lastModificationDate": 1758742241973,
       "contentHash": "59dfce11284f2636db261df9b6a18f81",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       "solcConfig": {
@@ -599,7 +599,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/interfaces/draft-IERC6093.sol": {
-      "lastModificationDate": 1758150727170,
+      "lastModificationDate": 1758742240494,
       "contentHash": "5041977bbe908de2e6ed0270447f79ad",
       "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
       "solcConfig": {
@@ -685,7 +685,7 @@
       ]
     },
     "/root/block-coop-sacco/contracts/PackageManagerV2_2.sol": {
-      "lastModificationDate": 1758309771424,
+      "lastModificationDate": 1758311705213,
       "contentHash": "ae8dc5476053fe3e3351efcb8c9fd5bf",
       "sourceName": "contracts/PackageManagerV2_2.sol",
       "solcConfig": {
@@ -911,7 +911,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/cryptography/EIP712.sol": {
-      "lastModificationDate": 1758150727191,
+      "lastModificationDate": 1758742240813,
       "contentHash": "d67dfba302ed2489324d7584625c3bde",
       "sourceName": "@openzeppelin/contracts/utils/cryptography/EIP712.sol",
       "solcConfig": {
@@ -953,7 +953,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/cryptography/ECDSA.sol": {
-      "lastModificationDate": 1758150727183,
+      "lastModificationDate": 1758742240743,
       "contentHash": "81de029d56aa803972be03c5d277cb6c",
       "sourceName": "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
       "solcConfig": {
@@ -991,7 +991,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/ShortStrings.sol": {
-      "lastModificationDate": 1758150727473,
+      "lastModificationDate": 1758742246982,
       "contentHash": "c1be9487e5a64acf23b5d8028482e748",
       "sourceName": "@openzeppelin/contracts/utils/ShortStrings.sol",
       "solcConfig": {
@@ -1031,7 +1031,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/interfaces/IERC5267.sol": {
-      "lastModificationDate": 1758150727407,
+      "lastModificationDate": 1758742245754,
       "contentHash": "6e00d2fe4bc0d5f1add753824498bb35",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC5267.sol",
       "solcConfig": {
@@ -1069,7 +1069,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol": {
-      "lastModificationDate": 1758150727442,
+      "lastModificationDate": 1758742246286,
       "contentHash": "260f3968eefa3bbd30520cff5384cd93",
       "sourceName": "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol",
       "solcConfig": {
@@ -1109,7 +1109,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/StorageSlot.sol": {
-      "lastModificationDate": 1758150727483,
+      "lastModificationDate": 1758742247161,
       "contentHash": "e656d64c4ce918f3d13030b91c935134",
       "sourceName": "@openzeppelin/contracts/utils/StorageSlot.sol",
       "solcConfig": {
@@ -1147,7 +1147,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/Strings.sol": {
-      "lastModificationDate": 1758150727484,
+      "lastModificationDate": 1758742247176,
       "contentHash": "d8f70caf0e0c77dc908176ed44812fb7",
       "sourceName": "@openzeppelin/contracts/utils/Strings.sol",
       "solcConfig": {
@@ -1189,7 +1189,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/math/SafeCast.sol": {
-      "lastModificationDate": 1758150727465,
+      "lastModificationDate": 1758742246896,
       "contentHash": "2adca1150f58fc6f3d1f0a0f22ee7cca",
       "sourceName": "@openzeppelin/contracts/utils/math/SafeCast.sol",
       "solcConfig": {
@@ -1227,7 +1227,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/math/Math.sol": {
-      "lastModificationDate": 1758150727438,
+      "lastModificationDate": 1758742246214,
       "contentHash": "5ec781e33d3a9ac91ffdc83d94420412",
       "sourceName": "@openzeppelin/contracts/utils/math/Math.sol",
       "solcConfig": {
@@ -1268,7 +1268,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/math/SignedMath.sol": {
-      "lastModificationDate": 1758150727476,
+      "lastModificationDate": 1758742247036,
       "contentHash": "ae3528afb8bdb0a7dcfba5b115ee8074",
       "sourceName": "@openzeppelin/contracts/utils/math/SignedMath.sol",
       "solcConfig": {
@@ -1308,7 +1308,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts/utils/Panic.sol": {
-      "lastModificationDate": 1758150727457,
+      "lastModificationDate": 1758742246635,
       "contentHash": "2133dc13536b4a6a98131e431fac59e1",
       "sourceName": "@openzeppelin/contracts/utils/Panic.sol",
       "solcConfig": {
@@ -1387,7 +1387,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol": {
-      "lastModificationDate": 1758150726490,
+      "lastModificationDate": 1758742227552,
       "contentHash": "4d250f562322f9c023c5503064ffc12f",
       "sourceName": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol",
       "solcConfig": {
@@ -1428,7 +1428,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol": {
-      "lastModificationDate": 1758150726845,
+      "lastModificationDate": 1758742235964,
       "contentHash": "2acae54ad209714bca07edf4bae32f72",
       "sourceName": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol",
       "solcConfig": {
@@ -1466,7 +1466,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol": {
-      "lastModificationDate": 1758150726247,
+      "lastModificationDate": 1758742222912,
       "contentHash": "c28aaa25d083a9a55bd9ec9e0b785122",
       "sourceName": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol",
       "solcConfig": {
@@ -1506,7 +1506,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol": {
-      "lastModificationDate": 1758150726891,
+      "lastModificationDate": 1758742236753,
       "contentHash": "a77dad8312dfaddab72fab403ee0c0a6",
       "sourceName": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol",
       "solcConfig": {
@@ -1600,7 +1600,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol": {
-      "lastModificationDate": 1758150726187,
+      "lastModificationDate": 1758742222327,
       "contentHash": "1460918cfe408f7a514ff980f638fecc",
       "sourceName": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol",
       "solcConfig": {
@@ -1644,7 +1644,7 @@
       ]
     },
     "/root/block-coop-sacco/node_modules/@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol": {
-      "lastModificationDate": 1758150726907,
+      "lastModificationDate": 1758742236789,
       "contentHash": "24562076b21756e3358ede5e844008ce",
       "sourceName": "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol",
       "solcConfig": {
@@ -1681,6 +1681,126 @@
       ],
       "artifacts": [
         "ReentrancyGuardUpgradeable"
+      ]
+    },
+    "/root/block-coop-sacco/contracts/MpesaTreasuryAdapter.sol": {
+      "lastModificationDate": 1760053645104,
+      "contentHash": "0cc70e5d54781b7e1b0d77134c8bb7f5",
+      "sourceName": "contracts/MpesaTreasuryAdapter.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata",
+                "storageLayout"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IERC20Minimal",
+        "IPackageManagerMinimal",
+        "MpesaTreasuryAdapter"
+      ]
+    },
+    "/root/block-coop-sacco/contracts/MpesaTreasuryAdapterV2.sol": {
+      "lastModificationDate": 1760276875605,
+      "contentHash": "0f5a31d2e3cebc0e8f2106c4c68c5312",
+      "sourceName": "contracts/MpesaTreasuryAdapterV2.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata",
+                "storageLayout"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IERC20MinimalV2",
+        "IPackageManagerMinimalV2",
+        "MpesaTreasuryAdapterV2"
+      ]
+    },
+    "/root/block-coop-sacco/contracts/MpesaTreasuryAdapterV3.sol": {
+      "lastModificationDate": 1760276890382,
+      "contentHash": "26743c018e68f5602c08a4e0f9b60c32",
+      "sourceName": "contracts/MpesaTreasuryAdapterV3.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata",
+                "storageLayout"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IERC20MinimalV3",
+        "IPackageManagerMinimalV3",
+        "MpesaTreasuryAdapterV3"
       ]
     }
   }

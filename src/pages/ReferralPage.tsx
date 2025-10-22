@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useWeb3 } from '../providers/Web3Provider';
 import { useReferral } from '../hooks/useReferral';
+import toast from 'react-hot-toast';
+import { claimReferralRewards } from '../lib/contracts';
 import { ReferralMetricsCard } from '../components/referral/ReferralMetricsCard';
 import { ReferralLinkCard } from '../components/referral/ReferralLinkCard';
 import { ReferralHistoryTable } from '../components/referral/ReferralHistoryTable';
@@ -29,6 +31,25 @@ export function ReferralPage() {
     error, 
     refetch 
   } = useReferral();
+
+  const handleClaimRewards = async () => {
+    try {
+      if (!account) return;
+      const tx = await claimReferralRewards(account);
+      if (tx?.pending) {
+        toast.loading('Claiming referral rewards...', { id: 'claim-ref' });
+        await tx.wait?.().catch(() => {});
+        toast.success('Referral rewards claimed!', { id: 'claim-ref' });
+      } else {
+        // Current system pays instantly; no on-chain claim needed
+        toast.success('Referral rewards are paid instantly on each referral.');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to claim referral rewards');
+    } finally {
+      refetch();
+    }
+  };
 
   // Show connection prompt if not connected
   if (!isConnected) {
@@ -108,6 +129,9 @@ export function ReferralPage() {
                   {formattedStats.referralCount} Referrals
                 </Badge>
               )}
+              <Button onClick={handleClaimRewards} variant="primary" size="sm">
+                Claim Referral Rewards
+              </Button>
             </div>
           </div>
         </CardContent>

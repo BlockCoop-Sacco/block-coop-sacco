@@ -1,108 +1,62 @@
-/* eslint-disable no-console */
-require('dotenv').config();
-try { require('dotenv').config({ path: '.env.production', override: false }); } catch (e) {}
 const hre = require('hardhat');
 
-/**
- * Estimate gas for redeploying core contracts (excluding PackageManager proxy upgrade)
- * and common setup calls. Uses current network gas price and a provided BNB price.
- *
- * Env:
- *   BNB_PRICE_USD (number) e.g. 979
- *   ROUTER, FACTORY, USDT, TREASURY, TAX_MANAGER (addresses) if needed
- */
 async function main() {
-  const ethers = hre.ethers;
+  const { ethers } = hre;
+
+  // Use env or defaults
+  const USDT = (process.env.USDT || '0x55d398326f99059ff775485246999027b3197955').toLowerCase();
+  const ROUTER = (process.env.ROUTER || '0x10ED43C718714eb63d5AA57B78B54704E256024E').toLowerCase();
+  const FACTORY = (process.env.FACTORY || '0xCA143Ce32Fe78f1f7019d7d551a6402fC5350c73').toLowerCase();
+  const ADMIN = (process.env.VITE_TREASURY_ADDRESS || (await ethers.getSigners())[0].address).toLowerCase();
+  const TREASURY = (process.env.VITE_TREASURY_ADDRESS || ADMIN).toLowerCase();
+  const FEE_RECIPIENT = (process.env.FEE_RECIPIENT || TREASURY).toLowerCase();
+  const GLOBAL_TARGET_PRICE = ethers.parseUnits(process.env.GLOBAL_TARGET_PRICE || '1', 18);
+
   const provider = ethers.provider;
   const [deployer] = await ethers.getSigners();
-
-  const bnbPrice = Number(process.env.BNB_PRICE_USD || '979');
-  // ethers v6: getFeeData() returns { gasPrice?, maxFeePerGas?, maxPriorityFeePerGas? }
   const fee = await provider.getFeeData();
-  const gasPrice = fee.gasPrice ?? fee.maxFeePerGas ?? ethers.parseUnits('5', 'gwei');
+  const gasPrice = fee.gasPrice ?? fee.maxFeePerGas ?? ethers.parseUnits('3', 'gwei');
 
-  function weiToBNB(wei) { return Number(wei) / 1e18; }
-  function gwei(bn) { return Number(bn) / 1e9; }
+  function fmt(g) { return g.toString(); }
+  function toBNB(g) { return Number((g * gasPrice) / 10n**18n); }
 
-  console.log('Network:', hre.network.name);
-  console.log('Deployer:', deployer.address);
-  console.log('Gas price (gwei):', gwei(gasPrice).toFixed(2));
-  console.log('BNB price (USD):', bnbPrice);
+  // Factories
+  const SwapTaxManager = await ethers.getContractFactory('SwapTaxManager');
+  const BLOCKS = await ethers.getContractFactory('BLOCKS');
+  const BLOCKS_LP = await ethers.getContractFactory('BLOCKS_LP');
+  const VestingVault = await ethers.getContractFactory('VestingVault');
+  const PackageManager = await ethers.getContractFactory('PackageManagerV2_2');
+  const SecondaryMarket = await ethers.getContractFactory('SecondaryMarket');
+  const Staking = await ethers.getContractFactory('BLOCKSStakingV2');
 
   const results = [];
-  let totalGas = 0n;
+  let total = 0n;
 
-  async function estimateDeploy(name, factoryGetter, args = []) {
-    const Factory = await factoryGetter();
-    const deployTx = await Factory.getDeployTransaction(...args);
-    // Normalize fields for estimateGas
-    const tx = { from: deployer.address, data: deployTx.data, to: null, value: 0 };
-    const est = await provider.estimateGas(tx);
-    results.push({ name, gas: est });
-    totalGas += est;
+  async function est(name, tx) {
+    const gas = await provider.estimateGas({ from: deployer.address, data: tx.data, to: null, value: 0 });
+    results.push([name, gas]);
+    total += gas;
   }
 
-  // NOTE: we only estimate; we do not send txs.
-  // Factories (must exist in artifacts):
-  // BLOCKS (token), BLOCKS_LP, VestingVault, SwapTaxManager, SecondaryMarket, MinimalForwarder
+  await est('SwapTaxManager', await SwapTaxManager.getDeployTransaction(ADMIN));
+  await est('BLOCKS', await BLOCKS.getDeployTransaction('BLOCKS', 'BLOCKS', ADMIN, '0x0000000000000000000000000000000000000001'));
+  await est('BLOCKS_LP', await BLOCKS_LP.getDeployTransaction('BLOCKS-LP', 'BLOCKS-LP', ADMIN));
+  await est('VestingVault', await VestingVault.getDeployTransaction('0x0000000000000000000000000000000000000002', ADMIN));
+  await est('PackageManagerV2_2', await PackageManager.getDeployTransaction(USDT, '0x0000000000000000000000000000000000000002', '0x0000000000000000000000000000000000000003', '0x0000000000000000000000000000000000000004', ROUTER, FACTORY, TREASURY, '0x0000000000000000000000000000000000000005', ADMIN, GLOBAL_TARGET_PRICE));
+  await est('SecondaryMarket', await SecondaryMarket.getDeployTransaction(USDT, '0x0000000000000000000000000000000000000002', ROUTER, FACTORY, FEE_RECIPIENT, ADMIN, GLOBAL_TARGET_PRICE));
+  await est('BLOCKSStakingV2', await Staking.getDeployTransaction('0x0000000000000000000000000000000000000002', USDT, ADMIN));
 
-  // Addresses from deployments or env (router, factory, usdt, treasury)
-  const deployments = require('../deployments/deployments-mainnet-v2_2-fixed-1756833373.json');
-  const router = process.env.ROUTER || deployments.router;
-  const factory = process.env.FACTORY || deployments.factory;
-  const usdt = process.env.USDT || deployments.usdt;
-  const treasury = process.env.TREASURY || deployments.treasury;
-  const feeRecipient = treasury;
-  const targetPrice = ethers.parseUnits('1.0', 18); // placeholder
+  // Setup extras
+  const setupLow = 300_000n;
+  const setupHigh = 800_000n;
 
-  // BLOCKS
-  await estimateDeploy(
-    'BLOCKS (ERC20)',
-    async () => await ethers.getContractFactory('BLOCKS'),
-    [ 'BLOCKS', 'BLOCKS', deployer.address, (process.env.TAX_MANAGER || deployments.taxManager) ]
-  );
-  // BLOCKS_LP
-  await estimateDeploy(
-    'BLOCKS_LP (ERC20)',
-    async () => await ethers.getContractFactory('BLOCKS_LP'),
-    [ 'BLOCKS-LP', 'BLOCKS-LP', deployer.address ]
-  );
-  // VestingVault
-  await estimateDeploy(
-    'VestingVault',
-    async () => await ethers.getContractFactory('VestingVault'),
-    [ '0x0000000000000000000000000000000000000001', deployer.address ]
-  );
-  // SwapTaxManager
-  await estimateDeploy('SwapTaxManager', async () => await ethers.getContractFactory('SwapTaxManager'), [ deployer.address ]);
-  // SecondaryMarket(usdt, blocks, router, factory, feeRecipient, admin, targetPrice)
-  await estimateDeploy('SecondaryMarket', async () => await ethers.getContractFactory('SecondaryMarket'), [ usdt, '0x0000000000000000000000000000000000000001', router, factory, feeRecipient, deployer.address, targetPrice ]);
-  // MinimalForwarder
-  await estimateDeploy('MinimalForwarder', async () => await ethers.getContractFactory('MinimalForwarder'), []);
-
-  // Setup calls (rough estimates): we simulate simple role grants and a router allowance init on PackageManagerV2_2
-  // For estimation, use a dummy contract with similar function signatures could be created; here we output typical ranges instead.
-
-  console.log('\nPer-contract estimated gas:');
-  for (const r of results) {
-    const bnb = weiToBNB(r.gas * gasPrice);
-    const usd = bnb * bnbPrice;
-    console.log(`- ${r.name}: ${r.gas} gas ≈ ${bnb.toFixed(6)} BNB ≈ $${usd.toFixed(2)}`);
+  console.log('--- Gas Estimates (deploy-friendly build assumed) ---');
+  for (const [name, gas] of results) {
+    console.log(`${name}: ${fmt(gas)} gas`);
   }
-
-  const totalBnb = weiToBNB(totalGas * gasPrice);
-  const totalUsd = totalBnb * bnbPrice;
-
-  console.log('\nTotal (deploy only):');
-  console.log(`Gas: ${totalGas}  |  Cost: ${totalBnb.toFixed(6)} BNB  (~$${totalUsd.toFixed(2)})`);
-
-  console.log('\nAdd setup overhead (roles/allowances): ~0.3M–0.8M gas');
-  const low = totalGas + 300_000n;
-  const high = totalGas + 800_000n;
-  const lowBnb = weiToBNB(low * gasPrice);
-  const highBnb = weiToBNB(high * gasPrice);
-  console.log(`With setup low: ${low} gas ≈ ${lowBnb.toFixed(6)} BNB (~$${(lowBnb*bnbPrice).toFixed(2)})`);
-  console.log(`With setup high: ${high} gas ≈ ${highBnb.toFixed(6)} BNB (~$${(highBnb*bnbPrice).toFixed(2)})`);
+  console.log(`TOTAL (deploy only): ${fmt(total)} gas`);
+  console.log(`With setup low:  ${fmt(total + setupLow)} gas`);
+  console.log(`With setup high: ${fmt(total + setupHigh)} gas`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

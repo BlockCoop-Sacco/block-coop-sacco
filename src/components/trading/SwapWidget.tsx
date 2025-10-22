@@ -5,6 +5,7 @@ import { Input } from '../ui/Input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/Badge';
 import { Alert, AlertDescription } from '../ui/alert';
+import { ErrorModal } from '../ui/ErrorModal';
 import {
   ArrowUpDown,
   Settings,
@@ -53,6 +54,8 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
   const [quote, setQuote] = useState<any>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   // Token info based on input selection
   const inputTokenInfo = inputToken === 'USDT' ? usdtInfo : blocksInfo;
@@ -223,7 +226,19 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
       }
     } catch (err: any) {
       console.error('Error executing swap:', err);
-      setSwapError(err.message || 'Failed to execute swap');
+      const raw = String(err?.message || err);
+      // Map low-level router errors to friendly copy
+      let friendly = 'Swap failed. Please try again.';
+      if (raw.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
+        friendly = 'Slippage too high or liquidity too low. Try a smaller amount or higher slippage.';
+      } else if (raw.includes('TRANSFER_FROM_FAILED') || raw.includes('insufficient')) {
+        friendly = 'Insufficient balance or allowance.';
+      } else if (raw.includes('user rejected') || err?.code === 4001) {
+        friendly = 'Transaction cancelled.';
+      }
+      setSwapError(friendly);
+      setErrorDetails(raw);
+      setShowErrorModal(true);
     } finally {
       setIsExecuting(false);
     }
@@ -328,8 +343,8 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Error Alerts */}
-        {(swapError || error) && (
+        {/* Error Alerts (compact) */}
+        {(swapError || error) && !showErrorModal && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
@@ -338,12 +353,11 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  clearError();
-                  setSwapError(null);
+                  setShowErrorModal(true);
                 }}
                 className="p-1"
               >
-                ×
+                Details
               </Button>
             </AlertDescription>
           </Alert>
@@ -539,6 +553,14 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
           </div>
         )}
       </CardContent>
+      {/* Error Modal */}
+      <ErrorModal
+        open={showErrorModal}
+        title="Swap failed"
+        message={(swapError || error) ?? 'An error occurred'}
+        details={errorDetails || undefined}
+        onClose={() => { setShowErrorModal(false); setErrorDetails(null); clearError(); setSwapError(null); }}
+      />
     </Card>
   );
 }
