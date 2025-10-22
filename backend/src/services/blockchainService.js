@@ -15,13 +15,13 @@ import '../config/env.js';
 
 class BlockchainService {
   constructor() {
-    this.rpcUrl = process.env.BSC_RPC_URL;
+    this.rpcUrl = process.env.BSC_RPC_URL || 'https://bsc-dataseed1.binance.org';
     this.privateKey = process.env.PRIVATE_KEY;
     this.packageManagerAddress = process.env.PACKAGE_MANAGER_ADDRESS;
     this.usdtAddress = process.env.USDT_ADDRESS;
     this.adapterAddress = process.env.ADAPTER_ADDRESS; // optional; when set, use adapter flow
     this.safeAddress = process.env.SAFE_ADDRESS; // optional; used for balance checks
-    this.chainId = parseInt(process.env.BLOCKCHAIN_CHAIN_ID || '56');
+    this.chainId = 56;
 
     // Validate configuration
     this.validateConfiguration();
@@ -62,7 +62,7 @@ class BlockchainService {
     this.retryDelay = parseInt(process.env.RETRY_DELAY || '5000');
 
     logger.info('Blockchain service initialized:', {
-      network: this.chainId === 56 ? 'BSC Mainnet' : 'BSC Testnet',
+      network: 'BSC Mainnet',
       wallet: this.wallet.address,
       packageManager: this.packageManagerAddress,
       usdt: this.usdtAddress,

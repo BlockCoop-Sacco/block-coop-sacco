@@ -97,7 +97,7 @@ export function PortfolioPage() {
 
   const handleClaimVested = async () => {
     if (!isConnected || !isCorrectNetwork) {
-      toast.error('Please connect your wallet and switch to BSC Testnet');
+      toast.error('Please connect your wallet and switch to BSC Mainnet');
       return;
     }
 
@@ -170,7 +170,7 @@ export function PortfolioPage() {
           <CardContent className="p-12 text-center">
             <TrendingUp className="h-12 w-12 text-warning-500 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Wrong Network</h3>
-            <p className="text-gray-600 mb-4">Please switch to BSC Testnet to view your portfolio.</p>
+            <p className="text-gray-600 mb-4">Please switch to BSC Mainnet to view your portfolio.</p>
             <Button onClick={switchToCorrectNetwork}>
               Switch Network
             </Button>
@@ -321,9 +321,7 @@ export function PortfolioPage() {
                     <p className={`text-lg font-semibold ${formattedSummary.roi >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       {formattedSummary.roi >= 0 ? '+' : ''}{formattedSummary.roi.toFixed(2)}%
                     </p>
-                    <p className="text-xs text-indigo-500 mt-1">
-                      {marketPrice ? `Based on current price: $${formatTokenAmount(marketPrice, 18, 4)}` : 'Based on current market price'}
-                    </p>
+                    <p className="text-xs text-indigo-500 mt-1">Your ROI Value</p>
                   </div>
                   <div className="bg-gradient-to-r from-teal-50 to-green-50 p-4 rounded-lg">
                     <p className="text-sm text-teal-600">Vesting Tokens</p>

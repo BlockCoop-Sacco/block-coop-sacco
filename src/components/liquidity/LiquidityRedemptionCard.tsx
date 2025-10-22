@@ -115,7 +115,7 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
 
   const handleRedemption = async () => {
     if (!isConnected || !isCorrectNetwork) {
-      toast.error('Please connect your wallet and switch to BSC Testnet');
+      toast.error('Please connect your wallet and switch to BSC Mainnet');
       return;
     }
 
@@ -318,7 +318,7 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
               </span>
             </div>
           </div>
-          <Badge variant="secondary">BSC Testnet</Badge>
+          <Badge variant="secondary">BSC Mainnet</Badge>
         </div>
 
         {/* Action Button */}

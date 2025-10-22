@@ -11,32 +11,24 @@ async function main() {
     throw new Error('Missing deployments file: ' + deploymentsPath);
   }
   const d = JSON.parse(fs.readFileSync(deploymentsPath, 'utf8'));
-
-  const NEW_TREASURY = (process.env.NEW_TREASURY || '').trim();
-  if (!NEW_TREASURY || !ethers.isAddress(NEW_TREASURY)) {
-    throw new Error('Set NEW_TREASURY to a valid address');
-  }
-
   const pm = await ethers.getContractAt('PackageManagerV2_2', d.packageManager);
-  const currentTreasury = await pm.treasury();
 
   console.log('Network:', network.name);
   console.log('PackageManager:', d.packageManager);
-  console.log('Current treasury:', currentTreasury);
-  console.log('New treasury:', NEW_TREASURY);
 
-  if (currentTreasury.toLowerCase() === NEW_TREASURY.toLowerCase()) {
-    console.log('✅ Treasury already set to target');
+  const isPaused = await pm.paused();
+  if (isPaused) {
+    console.log('✅ Already paused');
     return;
   }
 
-  const tx = await pm.setTreasury(NEW_TREASURY);
-  console.log('🔗 setTreasury tx:', tx.hash);
+  const tx = await pm.pause();
+  console.log('🔗 pause tx:', tx.hash);
   const rc = await tx.wait();
-  if (rc && rc.status === 0) throw new Error('setTreasury reverted');
-  const after = await pm.treasury();
-  console.log('✅ Treasury updated:', after);
+  if (rc && rc.status === 0) throw new Error('pause reverted');
+  console.log('✅ Paused');
 }
 
 main().catch((e) => { console.error('❌ Error:', e.message || e); process.exit(1); });
+
 

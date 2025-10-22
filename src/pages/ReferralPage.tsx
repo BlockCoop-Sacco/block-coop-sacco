@@ -88,10 +88,10 @@ export function ReferralPage() {
             <AlertCircle className="h-16 w-16 text-orange-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Wrong Network</h3>
             <p className="text-gray-600 mb-6">
-              Please switch to BSC Testnet to access your referral dashboard.
+              Please switch to BSC Mainnet to access your referral dashboard.
             </p>
             <Button onClick={switchToCorrectNetwork}>
-              Switch to BSC Testnet
+              Switch to BSC Mainnet
             </Button>
           </CardContent>
         </Card>

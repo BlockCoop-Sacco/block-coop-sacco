@@ -3,6 +3,8 @@ import { PackageList } from '../components/packages/PackageList';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { BlocksTokenLogo } from '../components/ui/BlocksTokenLogo';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   Shield,
   Zap,
@@ -28,10 +30,15 @@ import {
   MessageCircle,
   Send,
   Instagram,
-  Facebook
+  Facebook,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export function HomePage() {
+  const [copied, setCopied] = useState(false);
+  const [subscribeEmail, setSubscribeEmail] = useState('');
+
   const scrollToPackages = () => {
     const packagesSection = document.getElementById('packages-section');
     if (packagesSection) {
@@ -44,6 +51,29 @@ export function HomePage() {
     if (howItWorksSection) {
       howItWorksSection.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const BLOCKS_CONTRACT = '0xfd3f86d951bcddd209241884c021636c2a60e195';
+
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(BLOCKS_CONTRACT);
+      setCopied(true);
+      toast.success('BLOCKS contract address copied');
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      toast.error('Failed to copy address');
+    }
+  };
+
+  const handleSubscribe = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!subscribeEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(subscribeEmail)) {
+      toast.error('Please enter a valid email');
+      return;
+    }
+    toast.success('Thanks for subscribing!');
+    setSubscribeEmail('');
   };
 
 
@@ -374,10 +404,36 @@ export function HomePage() {
         </div>
       </div>
 
+      {/* BLOCKS Contract Badge */}
+      <div className="flex justify-center">
+        <button
+          onClick={handleCopyAddress}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-amber-400/60 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors shadow-sm"
+          aria-label="Copy BLOCKS contract address"
+          title="Click to copy"
+        >
+          <span className="text-xs font-semibold">BLOCKS Contract</span>
+          <span className="text-xs font-mono">{BLOCKS_CONTRACT}</span>
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        </button>
+      </div>
+
       {/* Packages Section */}
       <div id="packages-section" className="space-y-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Investment Packages</h2>
+          <div className="mb-3 flex justify-center">
+            <button
+              onClick={handleCopyAddress}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-amber-400/60 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors shadow-sm"
+              aria-label="Copy BLOCKS contract address"
+              title="Click to copy"
+            >
+              <span className="text-xs font-semibold">BLOCKS Contract</span>
+              <span className="text-xs font-mono">{BLOCKS_CONTRACT}</span>
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Choose from our carefully crafted investment packages, each designed with unique split ratios and vesting schedules
           </p>
@@ -949,6 +1005,30 @@ export function HomePage() {
           </p>
         </div>
       </div>
+
+      {/* Footer Contact + Subscribe */}
+      <footer className="mt-8 border-t border-gray-200 pt-8">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <div className="text-center md:text-left text-gray-700">
+              <p className="text-sm">Contact: <a href="mailto:info@blockcoopsacco.com" className="font-medium text-blue-600 hover:underline">info@blockcoopsacco.com</a></p>
+            </div>
+            <form onSubmit={handleSubscribe} className="md:col-span-2">
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-center md:justify-end">
+                <input
+                  type="email"
+                  value={subscribeEmail}
+                  onChange={(e) => setSubscribeEmail(e.target.value)}
+                  placeholder="Enter your email to subscribe"
+                  className="w-full sm:w-auto flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  aria-label="Email address"
+                />
+                <Button type="submit" className="px-6">Subscribe</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </footer>
 
     </div>
   );

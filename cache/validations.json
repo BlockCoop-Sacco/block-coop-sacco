@@ -2,6 +2,102 @@
   "version": "3.4",
   "log": [
     {
+      "contracts/MpesaTreasuryAdapterV3.sol:IERC20MinimalV3": {
+        "src": "contracts/MpesaTreasuryAdapterV3.sol:4",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "transferFrom(address,address,uint256)",
+          "transfer(address,uint256)",
+          "approve(address,uint256)",
+          "allowance(address,address)",
+          "balanceOf(address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/MpesaTreasuryAdapterV3.sol:IPackageManagerMinimalV3": {
+        "src": "contracts/MpesaTreasuryAdapterV3.sol:12",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "SERVER_ROLE()",
+          "hasRole(bytes32,address)",
+          "getPackage(uint256)",
+          "purchaseFor(address,uint256,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/MpesaTreasuryAdapterV3.sol:MpesaTreasuryAdapterV3": {
+        "src": "contracts/MpesaTreasuryAdapterV3.sol:33",
+        "version": {
+          "withMetadata": "0176016072c985426b2cbc57888c575e9ecc132663a02839475f492ccc6ce066",
+          "withoutMetadata": "9aa29916e22622eccf3c6eff87b5520cec3ba60487c4694f556088d4c9a87d1f",
+          "linkedWithoutMetadata": "9aa29916e22622eccf3c6eff87b5520cec3ba60487c4694f556088d4c9a87d1f"
+        },
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "(address,address,address,address)",
+          "preapprove()",
+          "purchaseUsingTreasury(address,uint256,address)"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "MpesaTreasuryAdapterV3",
+            "src": "contracts/MpesaTreasuryAdapterV3.sol:39"
+          },
+          {
+            "kind": "state-variable-immutable",
+            "name": "usdt",
+            "src": "contracts/MpesaTreasuryAdapterV3.sol:34"
+          },
+          {
+            "kind": "state-variable-immutable",
+            "name": "packageManager",
+            "src": "contracts/MpesaTreasuryAdapterV3.sol:35"
+          },
+          {
+            "kind": "state-variable-immutable",
+            "name": "treasury",
+            "src": "contracts/MpesaTreasuryAdapterV3.sol:36"
+          },
+          {
+            "kind": "state-variable-immutable",
+            "name": "backendEOA",
+            "src": "contracts/MpesaTreasuryAdapterV3.sol:37"
+          }
+        ],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      }
+    },
+    {
       "contracts/MpesaTreasuryAdapterV2.sol:IERC20MinimalV2": {
         "src": "contracts/MpesaTreasuryAdapterV2.sol:4",
         "inherit": [],

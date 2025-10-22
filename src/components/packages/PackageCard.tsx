@@ -78,8 +78,8 @@ function PackageCardInner({ package: pkg, onPurchase, featured }: PackageCardPro
     if (roiPct != null) roiPctSpring.set(roiPct);
     if (roiValue != null) roiValueSpring.set(roiValue);
   }, [roiPct, roiValue]);
-  const roiPctText = useTransform(roiPctSpring, (v) => `${v.toFixed(2)}%`);
-  const roiValueText = useTransform(roiValueSpring, (v) => `$${v.toFixed(2)}`);
+  const roiPctText = useTransform(roiPctSpring, (v) => `${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`);
+  const roiValueText = useTransform(roiValueSpring, (v) => `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
   
   return (
     <Tilt glareEnable={true} glareMaxOpacity={0.15} glareColor="#38bdf8" glarePosition="all" scale={1.01} tiltMaxAngleX={6} tiltMaxAngleY={6}>
@@ -91,7 +91,7 @@ function PackageCardInner({ package: pkg, onPurchase, featured }: PackageCardPro
         onHoverStart={() => setHovered(true)}
         onHoverEnd={() => setHovered(false)}
       >
-        <Card className={`group relative overflow-hidden border border-white/10 dark:border-white/5 bg-white/5 dark:bg-white/5 backdrop-blur-md hover:ring-1 hover:ring-sky-400/40 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ${featured ? 'ring-2 ring-amber-400/60 shadow-[0_0_40px_rgba(251,191,36,0.25)]' : ''}`}>
+        <Card className={`group relative overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:ring-1 hover:ring-sky-400/40 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ${featured ? 'ring-2 ring-amber-400/60 shadow-[0_0_40px_rgba(251,191,36,0.25)]' : ''}`}>
           <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-gradient-to-tr from-sky-400/20 via-blue-500/10 to-indigo-600/10 blur-2xl" />
           {featured && (
             <div className="absolute top-3 right-3 z-10">
@@ -100,24 +100,27 @@ function PackageCardInner({ package: pkg, onPurchase, featured }: PackageCardPro
               </span>
             </div>
           )}
-          <CardContent className="p-6">
+          <CardContent className="p-6 text-slate-900 dark:text-white">
             {/* Top Section */}
-            <div className="flex items-start justify-between mb-5">
+            <div className="flex items-start justify-between mb-5 text-slate-900 dark:text-white">
               <div>
-                <h3 className="text-[1.25rem] font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-blue-600">{pkg.name}</h3>
-                <div className="mt-1 text-[1.5rem] font-semibold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-orange-600 dark:from-amber-300 dark:to-yellow-400 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
-                  ${formatUSDT(pkg.entryUSDT)} <span className="text-sm font-normal text-gray-600 dark:text-gray-300">USDT</span>
+                <h3 className="text-[1.25rem] font-bold">{pkg.name}</h3>
+                <div className="mt-1 text-[1.5rem] font-semibold flex items-baseline gap-2">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-600 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">
+                    ${formatUSDT(pkg.entryUSDT)}
+                  </span>
+                  <span className="text-sm font-normal text-slate-700 dark:text-slate-300">USDT</span>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <div className={`h-2.5 w-2.5 rounded-full ${pkg.active ? 'bg-emerald-400 shadow-[0_0_8px_2px_rgba(16,185,129,0.45)] animate-pulse' : 'bg-gray-400'}`} />
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{pkg.active ? 'Active' : 'Locked'}</span>
+                <div className={`h-2.5 w-2.5 rounded-full ${pkg.active ? 'bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.45)] animate-pulse' : 'bg-slate-400'}`} />
+                <span className="text-xs font-medium">{pkg.active ? 'Active' : 'Locked'}</span>
               </div>
             </div>
 
             {/* Middle Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="rounded-lg p-4 border border-white/10 bg-white/5 dark:bg-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-slate-900 dark:text-white">
+              <div className="rounded-lg p-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                 <div className="flex items-center justify-between">
                   <div className="w-16 h-16">
                     <CircularProgressbar
@@ -135,7 +138,7 @@ function PackageCardInner({ package: pkg, onPurchase, featured }: PackageCardPro
                     <Tooltip.Provider delayDuration={150}>
                       <Tooltip.Root>
                         <Tooltip.Trigger asChild>
-                          <div className="text-xs text-gray-500 flex items-center justify-end">ROI %</div>
+                          <div className="text-xs flex items-center justify-end">ROI %</div>
                         </Tooltip.Trigger>
                         <Tooltip.Portal>
                           <Tooltip.Content className="rounded-md bg-black/80 px-2 py-1 text-xs text-white" sideOffset={6}>
@@ -145,32 +148,32 @@ function PackageCardInner({ package: pkg, onPurchase, featured }: PackageCardPro
                         </Tooltip.Portal>
                       </Tooltip.Root>
                     </Tooltip.Provider>
-                    <div className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-emerald-600">
-                      {roiPct != null ? <motion.span>{roiPctText}</motion.span> : '—'}
+                    <div className="text-2xl font-extrabold">
+                      {roiPct != null ? <motion.span>{roiPctText}</motion.span> : '0.00%'}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-lg p-4 border border-white/10 bg-white/5 dark:bg-white/5">
+              <div className="rounded-lg p-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                 <div className="flex items-start justify-between">
-                  <div className="text-xs text-gray-500">ROI Value</div>
-                  <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">{roiValue != null ? <motion.span>{roiValueText}</motion.span> : '—'}</div>
+                  <div className="text-xs">Potential ROI Value</div>
+                  <div className="text-lg font-semibold">{roiValue != null ? <motion.span>{roiValueText}</motion.span> : '$0.00'}</div>
                 </div>
                 <div className="mt-3 border-t border-white/10 pt-3 flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2 text-gray-500"><Coins className="h-4 w-4" /><span>Tokens</span></div>
+                  <div className="flex items-center space-x-2"><Coins className="h-4 w-4" /><span>Tokens</span></div>
                   <div className="font-medium">{formatBLOCKS(splits.totalTokens)} BLOCKS</div>
                 </div>
                 <div className="mt-2 border-t border-white/10 pt-3 flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2 text-gray-500"><RefreshCw className="h-4 w-4" /><span>Exchange Rate</span></div>
+                  <div className="flex items-center space-x-2"><RefreshCw className="h-4 w-4" /><span>Exchange Rate</span></div>
                   <div className="font-medium">{formatExchangeRate(pkg.exchangeRate)} USDT/BLOCKS</div>
                 </div>
               </div>
             </div>
 
             {/* Bottom Section */}
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
+            <div className="mt-6 space-y-3 text-slate-900 dark:text-white">
+              <div className="flex items-center space-x-2 text-sm">
                 <Clock className="w-4 h-4" />
                 <span>Vesting Period:</span>
                 <span className="font-medium">{formatDuration(pkg.duration)}</span>
@@ -184,14 +187,14 @@ function PackageCardInner({ package: pkg, onPurchase, featured }: PackageCardPro
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
-                  className="mt-3 text-xs text-gray-600 dark:text-gray-300 flex items-center justify-between"
+                  className="mt-3 text-xs text-slate-900 dark:text-white flex items-center justify-between"
                 >
                   <div className="flex items-center space-x-2">
                     <Users className="h-3.5 w-3.5" />
                     <span>Referral:</span>
                     <span className="font-medium">{formatPercentage(pkg.referralBps)}</span>
                   </div>
-                  <div className="text-gray-500">Vesting applies to portion of tokens</div>
+                  <div>Vesting applies to portion of tokens</div>
                 </motion.div>
               )}
             </AnimatePresence>

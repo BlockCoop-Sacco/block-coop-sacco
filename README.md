@@ -203,11 +203,11 @@ npx hardhat test --gas-report
 
 ### Smart Contract Deployment
 ```bash
-# Deploy to BSC Testnet
-npx hardhat run scripts/deploy-fresh-blockcoop-v2.cjs --network bsctestnet
+# Deploy to BSC Mainnet
+npx hardhat run scripts/deploy-fresh-blockcoop-v2.cjs --network bscmainnet
 
 # Verify contracts
-npx hardhat run scripts/verify-v2-contracts.cjs --network bsctestnet
+npx hardhat run scripts/verify-v2-contracts.cjs --network bscmainnet
 ```
 
 ## 📊 Network Information

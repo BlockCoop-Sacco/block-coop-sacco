@@ -24,7 +24,6 @@ Make sure to set these in your cPanel environment variables or .env file:
 ```env
 # Blockchain Configuration
 VITE_BSC_RPC_URL=https://bsc-dataseed1.binance.org/
-VITE_CHAIN_ID=56
 VITE_NETWORK_NAME=BSC Mainnet
 
 # Contract Addresses

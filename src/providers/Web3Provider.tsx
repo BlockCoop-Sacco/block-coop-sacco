@@ -3,7 +3,7 @@ import { BrowserProvider, Signer } from 'ethers';
 import { useAppKitAccount, useAppKitNetwork, useAppKitProvider } from '@reown/appkit/react';
 import { appKit, connectWallet as openWalletModal, switchToCorrectNetwork, SUPPORTED_CHAIN_IDS } from '../lib/appkit';
 import { getContracts } from '../lib/contracts';
-import { bscTestnet, bsc } from '@reown/appkit/networks';
+import { bsc } from '@reown/appkit/networks';
 
 // Web3 context state interface (Ethers v6)
 export interface Web3ContextState {
@@ -225,7 +225,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
           account,
           chainId,
           isCorrectNetwork: SUPPORTED_CHAIN_IDS.includes(chainId || 0),
-          networkName: chainId === 56 ? 'BSC Mainnet' : chainId === 97 ? 'BSC Testnet' : 'Unknown',
+          networkName: chainId === 56 ? 'BSC Mainnet' : 'Unknown',
           hasProvider: true,
           hasSigner: true,
           usedAppKitProvider: providerToUse === walletProvider

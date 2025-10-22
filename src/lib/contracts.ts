@@ -179,15 +179,13 @@ export interface ContractConnectionState {
 export function getProvider(): JsonRpcProvider {
   return new JsonRpcProvider(appKitConfig.rpcUrl, {
     chainId: appKitConfig.chainId,
-    name: appKitConfig.chainId === 56 ? 'BSC Mainnet' : 'BSC Testnet'
+    name: 'BSC Mainnet'
   });
 }
 
 // Enhanced provider with RPC failover capability
 export async function getProviderWithFailover(): Promise<JsonRpcProvider> {
-  const networkConfig = appKitConfig.chainId === 56 ? 
-    (await import('./appkit')).BSC_MAINNET : 
-    (await import('./appkit')).BSC_TESTNET;
+  const networkConfig = (await import('./appkit')).BSC_MAINNET;
   
   const rpcUrls = (networkConfig as any).rpcUrls || [networkConfig.rpcUrl];
   
@@ -196,7 +194,7 @@ export async function getProviderWithFailover(): Promise<JsonRpcProvider> {
       console.log(`🔄 Trying RPC endpoint: ${rpcUrl}`);
       const provider = new JsonRpcProvider(rpcUrl, {
         chainId: appKitConfig.chainId,
-        name: appKitConfig.chainId === 56 ? 'BSC Mainnet' : 'BSC Testnet'
+        name: 'BSC Mainnet'
       });
       
       // Test the connection with a simple call

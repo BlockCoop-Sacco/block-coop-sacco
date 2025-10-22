@@ -94,7 +94,7 @@ export function RedeemPage() {
 
       // Network & Connection Validation
       if (!isConnected || !isCorrectNetwork) {
-        toast.error('Connect your wallet and switch to BSC Testnet');
+        toast.error('Connect your wallet and switch to BSC Mainnet');
         return;
       }
 
@@ -164,7 +164,7 @@ export function RedeemPage() {
 
       // Network & Connection Validation
       if (!isConnected || !isCorrectNetwork) {
-        toast.error('Connect your wallet and switch to BSC Testnet');
+        toast.error('Connect your wallet and switch to BSC Mainnet');
         return;
       }
 

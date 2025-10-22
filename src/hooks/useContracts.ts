@@ -327,7 +327,7 @@ export function useTransactions() {
     }
 
     if (!isCorrectNetwork) {
-      const error = new Error('Wrong network. Please switch to BSC Testnet');
+      const error = new Error('Wrong network. Please switch to BSC Mainnet');
       options?.onError?.(error);
       throw error;
     }
@@ -367,7 +367,7 @@ export function useNetworkValidation() {
   const { chainId, isConnected, switchToCorrectNetwork } = useWeb3();
   const [isValidating, setIsValidating] = useState(false);
 
-  const isCorrectNetwork = chainId === 97 || chainId === 56; // BSC Testnet or Mainnet
+  const isCorrectNetwork = chainId === 56; // BSC Mainnet only
 
   const validateAndSwitchNetwork = useCallback(async (): Promise<boolean> => {
     if (isCorrectNetwork) return true;

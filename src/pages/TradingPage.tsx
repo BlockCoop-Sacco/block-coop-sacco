@@ -77,7 +77,7 @@ export function TradingPage() {
         <Alert variant="destructive" className="max-w-md mx-auto">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
-            <span>Please switch to BSC Testnet to access trading</span>
+            <span>Please switch to BSC Mainnet to access trading</span>
             <Button 
               variant="outline" 
               size="sm" 

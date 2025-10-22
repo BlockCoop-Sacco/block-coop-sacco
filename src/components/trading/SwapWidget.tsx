@@ -286,8 +286,8 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
         <CardContent className="p-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Please switch to BSC Testnet to access trading features
+          <AlertDescription>
+              Please switch to BSC Mainnet to access trading features
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -533,7 +533,7 @@ export function SwapWidget({ onSwapComplete }: SwapWidgetProps) {
           )}
           {isConnected && !isCorrectNetwork && (
             <p className="text-xs text-red-500 text-center">
-              Switch to BSC Testnet to trade
+              Switch to BSC Mainnet to trade
             </p>
           )}
           {isConnected && isCorrectNetwork && !isSecondaryMarketEnabled && (
