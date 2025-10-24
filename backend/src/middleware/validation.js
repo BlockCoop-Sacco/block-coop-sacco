@@ -87,7 +87,7 @@ export const validateAmount = (amount, min = 0.01, max = 10000) => {
 // Package ID validation
 export const validatePackageId = (packageId) => {
   const numPackageId = parseInt(packageId);
-  return !isNaN(numPackageId) && numPackageId > 0 && numPackageId <= 1000;
+  return !isNaN(numPackageId) && numPackageId >= 0 && numPackageId <= 1000;
 };
 
 // Sanitize input data

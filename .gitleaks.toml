@@ -1,0 +1,5 @@
+[allowlist]
+  description = "Allowed patterns"
+  regexes = [
+    "(?i)^(?:VITE_|REACT_APP_)[A-Z0-9_]+=.*$",
+  ]

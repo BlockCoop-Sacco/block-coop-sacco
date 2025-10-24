@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWeb3 } from '../providers/Web3Provider';
+import { getContracts } from '../lib/contracts';
 import { formatTokenAmount } from '../lib/contracts';
 import toast from 'react-hot-toast';
 
@@ -79,7 +80,8 @@ export function useStaking() {
     try {
       // Clear any previous errors
       setError(null);
-      const stakingContract = contracts.staking;
+      // Use read-only provider for read calls
+      const stakingContract = getContracts().staking || contracts.staking;
       const poolCount = await stakingContract.poolCount();
       const poolsData: StakingPool[] = [];
 
@@ -119,7 +121,8 @@ export function useStaking() {
     try {
       // Clear any previous errors
       setError(null);
-      const stakingContract = contracts.staking;
+      // Use read-only provider for read calls
+      const stakingContract = getContracts().staking || contracts.staking;
       const poolCount = await stakingContract.poolCount();
       const stakesData: UserStake[] = [];
 
@@ -160,7 +163,8 @@ export function useStaking() {
     try {
       // Clear any previous errors
       setError(null);
-      const stakingContract = contracts.staking;
+      // Use read-only provider for read calls
+      const stakingContract = getContracts().staking || contracts.staking;
       const totalRewardsDistributed = await stakingContract.totalRewardsDistributed();
       const userTotalStaked = await stakingContract.totalUserStaked(account);
       const userTotalRewards = await stakingContract.getTotalPendingRewards(account);

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../providers/Web3Provider';
+import { getProvider } from '../lib/contracts';
 import { appKitConfig } from '../lib/appkit';
 
 // PancakeSwap ABI for liquidity pool data
@@ -41,7 +42,7 @@ export function useLiquidityPoolInfo() {
   });
 
   const fetchPoolInfo = useCallback(async () => {
-    if (!provider || !isConnected || !isCorrectNetwork) return;
+    if (!isConnected || !isCorrectNetwork) return;
 
     try {
       setPoolInfo(prev => ({ ...prev, loading: true, error: null }));
@@ -50,7 +51,7 @@ export function useLiquidityPoolInfo() {
       const factory = new ethers.Contract(
         appKitConfig.contracts.factory,
         PANCAKE_FACTORY_ABI,
-        provider
+        getProvider()
       );
 
       // Get pair address
@@ -64,14 +65,19 @@ export function useLiquidityPoolInfo() {
       }
 
       // Create pair contract instance
-      const pair = new ethers.Contract(pairAddress, PANCAKE_PAIR_ABI, provider);
+      const pair = new ethers.Contract(pairAddress, PANCAKE_PAIR_ABI, getProvider());
 
       // Get reserves and total supply from PancakeSwap pair
-      const [reserves, totalSupply, token0] = await Promise.all([
-        pair.getReserves(),
-        pair.totalSupply(),
-        pair.token0()
-      ]);
+      let reserves: any, totalSupply: bigint, token0: string;
+      try {
+        [reserves, totalSupply, token0] = await Promise.all([
+          pair.getReserves(),
+          pair.totalSupply(),
+          pair.token0()
+        ]);
+      } catch (e: any) {
+        throw new Error('Could not read pool reserves. Check factory/pair address or RPC.');
+      }
 
       // Determine which reserve corresponds to which token
       const shareTokenAddress = appKitConfig.contracts.share;
@@ -87,9 +93,19 @@ export function useLiquidityPoolInfo() {
       const finalShareTokenReserves = shareTokenReserves;
       const finalUsdtReserves = usdtReserves;
 
-      // Convert reserves to decimal numbers and compute price (USDT per BLOCKS)
-      const usdtReservesDecimal = Number(ethers.formatUnits(finalUsdtReserves, 18));
-      const shareTokenReservesDecimal = Number(ethers.formatUnits(finalShareTokenReserves, 18));
+      // Fetch actual token decimals to avoid scaling errors
+      const erc20DecimalsAbi = ['function decimals() view returns (uint8)'];
+      const readProvider = getProvider();
+      const usdtToken = new ethers.Contract(appKitConfig.contracts.usdt, erc20DecimalsAbi, readProvider);
+      const shareToken = new ethers.Contract(appKitConfig.contracts.share, erc20DecimalsAbi, readProvider);
+      const [usdtDecimals, shareDecimals] = await Promise.all([
+        usdtToken.decimals(),
+        shareToken.decimals(),
+      ]);
+
+      // Convert reserves to decimal numbers with correct precision
+      const usdtReservesDecimal = Number(ethers.formatUnits(finalUsdtReserves, Number(usdtDecimals)));
+      const shareTokenReservesDecimal = Number(ethers.formatUnits(finalShareTokenReserves, Number(shareDecimals)));
       const shareTokenPrice = shareTokenReservesDecimal > 0 ? (usdtReservesDecimal / shareTokenReservesDecimal) : 0;
       
       // TVL = USDT reserves + (BLOCKS reserves * BLOCKS price in USDT)
@@ -99,33 +115,32 @@ export function useLiquidityPoolInfo() {
       let poolShare = '0';
       if (account) {
         try {
-          const lpToken = new ethers.Contract(
+          // Pool share for this DApp is based on synthetic BLOCKS-LP token supply
+          const syntheticLp = new ethers.Contract(
             appKitConfig.contracts.lp,
             ['function balanceOf(address) external view returns (uint256)',
              'function totalSupply() external view returns (uint256)'],
-            provider
+            getProvider()
           );
-          
-          // Get both user's LP balance and LP token's total supply
+
           const [userLPBalance, lpTokenTotalSupply] = await Promise.all([
-            lpToken.balanceOf(account),
-            lpToken.totalSupply()
+            syntheticLp.balanceOf(account),
+            syntheticLp.totalSupply()
           ]);
-          
+
           if (userLPBalance > 0n && lpTokenTotalSupply > 0n) {
             const calculatedShare = (Number(userLPBalance) / Number(lpTokenTotalSupply)) * 100;
-            // Safety check: pool share should never exceed 100%
             poolShare = Math.min(calculatedShare, 100).toFixed(3);
           }
         } catch (error) {
-          console.warn('Could not fetch user LP balance:', error);
+          console.warn('Could not fetch synthetic LP balance:', error);
         }
       }
 
       setPoolInfo({
         totalLiquidity: Number(totalLiquidity).toFixed(3),
-        shareTokenReserves: Number(ethers.formatUnits(finalShareTokenReserves, 18)).toFixed(3),
-        usdtReserves: Number(ethers.formatUnits(finalUsdtReserves, 18)).toFixed(3),
+        shareTokenReserves: Number(ethers.formatUnits(finalShareTokenReserves, Number(shareDecimals))).toFixed(3),
+        usdtReserves: Number(ethers.formatUnits(finalUsdtReserves, Number(usdtDecimals))).toFixed(3),
         shareTokenPrice: shareTokenPrice.toFixed(3),
         totalValueLocked: totalValueLocked.toFixed(3),
         poolShare: Number(poolShare).toFixed(3),
@@ -141,7 +156,7 @@ export function useLiquidityPoolInfo() {
         error: error.message || 'Failed to fetch pool information'
       }));
     }
-  }, [provider, isConnected, isCorrectNetwork, account]);
+  }, [isConnected, isCorrectNetwork, account]);
 
   // Fetch pool info on mount and when dependencies change
   useEffect(() => {

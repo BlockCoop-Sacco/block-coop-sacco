@@ -18,8 +18,6 @@ async function main() {
   try {
     if (network.name === "bscmainnet") {
       existingDeployment = JSON.parse(fs.readFileSync("deployments/deployments-mainnet-v2_2.json", "utf8"));
-    } else {
-      existingDeployment = JSON.parse(fs.readFileSync("deployments/deployments-testnet-v2_2.json", "utf8"));
     }
   } catch (error) {
     console.error("❌ Failed to load existing deployment. Please deploy core contracts first.");
@@ -121,8 +119,7 @@ async function main() {
   console.log("   - Paused:", isPaused);
 
   // Update deployment file
-  const deploymentKey = network.name === "bscmainnet" ? "deployments-mainnet-v2_2.json" : "deployments-testnet-v2_2.json";
-  const deploymentPath = `deployments/${deploymentKey}`;
+  const deploymentPath = `deployments/deployments-mainnet-v2_2.json`;
   
   const updatedDeployment = {
     ...existingDeployment,

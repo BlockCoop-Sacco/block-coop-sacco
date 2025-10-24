@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Package, getContracts, getSigner } from '../../lib/contracts';
-import { formatUSDT, formatPercentage, formatDuration } from '../../lib/utils';
+import { Package, getContracts, getSigner, calculateSplitsWithTargetPrice, PackageSplits } from '../../lib/contracts';
+import { formatUSDT, formatPercentage, formatDuration, formatBLOCKS } from '../../lib/utils';
 import { useWeb3 } from '../../providers/Web3Provider';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
@@ -9,7 +9,7 @@ import { Badge } from '../../components/ui/Badge';
 import { PackageForm } from '../../components/admin/PackageForm';
 import { GlobalTargetPriceManager } from '../../components/admin/GlobalTargetPriceManager';
 
-import { Plus, Edit, Trash2, Package as PackageIcon, Play, Pause } from 'lucide-react';
+import { Plus, Edit, Trash2, Package as PackageIcon, Play, Pause, ChevronDown, ChevronRight, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function PackagesPage() {
@@ -19,6 +19,8 @@ export function PackagesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [togglingPackage, setTogglingPackage] = useState<number | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [splitState, setSplitState] = useState<Record<number, { loading: boolean; splits?: PackageSplits }>>({});
 
   useEffect(() => {
     loadPackages();
@@ -32,12 +34,16 @@ export function PackagesPage() {
         toast.error('Package manager contract not available');
         return;
       }
-      // Get package count and generate IDs
-      const packageCount = await contracts.packageManager.nextPackageId();
+      // Use read-only contracts for all reads to avoid wallet provider decode issues
+      const readOnly = getContracts();
+
+      // Get package count and generate IDs via read-only provider
+      const packageCount = await readOnly.packageManager.nextPackageId();
       const packageIds = Array.from({ length: Number(packageCount) }, (_, i) => i);
 
       const packagePromises = packageIds.map(async (id: number) => {
-        const pkg = await contracts.packageManager.getPackage(id);
+        // Read package details via read-only provider
+        const pkg = await readOnly.packageManager.getPackage(id);
 
         // Handle both array and object formats (same as PackageList)
         let packageData;
@@ -127,6 +133,29 @@ export function PackagesPage() {
     loadPackages();
   };
 
+  const toggleExpand = async (pkg: Package) => {
+    const next = new Set(expandedRows);
+    if (next.has(pkg.id)) {
+      next.delete(pkg.id);
+      setExpandedRows(next);
+      return;
+    }
+    next.add(pkg.id);
+    setExpandedRows(next);
+
+    // Load splits if not loaded yet
+    if (!splitState[pkg.id]?.splits && !splitState[pkg.id]?.loading) {
+      setSplitState((prev) => ({ ...prev, [pkg.id]: { loading: true } }));
+      try {
+        const splits = await calculateSplitsWithTargetPrice(pkg);
+        setSplitState((prev) => ({ ...prev, [pkg.id]: { loading: false, splits } }));
+      } catch (e) {
+        setSplitState((prev) => ({ ...prev, [pkg.id]: { loading: false } }));
+        console.error('Failed to load splits for admin details:', e);
+      }
+    }
+  };
+
   if (!isConnected) {
     return (
       <Card>
@@ -212,66 +241,143 @@ export function PackagesPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {packages.map((pkg) => (
-                    <tr key={pkg.id} className={`hover:bg-gray-50 ${!pkg.active ? 'bg-gray-50' : ''}`}>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className={`font-medium ${!pkg.active ? 'text-gray-500' : 'text-gray-900'}`}>{pkg.name}</div>
-                          <div className="text-sm text-gray-500">ID: {pkg.id}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={pkg.active ? "success" : "default"}>
-                          {pkg.active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`font-medium ${!pkg.active ? 'text-gray-500' : ''}`}>${formatUSDT(pkg.entryUSDT)}</span>
-                        <div className="text-sm text-gray-500">USDT</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="info">{formatPercentage(pkg.vestBps)}</Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`text-sm ${!pkg.active ? 'text-gray-500' : ''}`}>{formatDuration(pkg.duration)}</span>
-                        {pkg.cliff > 0 && (
-                          <div className="text-xs text-gray-500">
-                            Cliff: {formatDuration(pkg.cliff)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="success">{formatPercentage(pkg.referralBps)}</Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button
-                            variant={pkg.active ? "outline" : "default"}
-                            size="sm"
-                            onClick={() => handleTogglePackage(pkg)}
-                            disabled={togglingPackage === pkg.id}
-                            className={pkg.active ? "text-orange-600 border-orange-600 hover:bg-orange-50" : "text-green-600 bg-green-600 hover:bg-green-700"}
-                          >
-                            {togglingPackage === pkg.id ? (
-                              <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full" />
-                            ) : pkg.active ? (
-                              <Pause className="h-3 w-3" />
-                            ) : (
-                              <Play className="h-3 w-3" />
+                  {packages.map((pkg) => {
+                    const isExpanded = expandedRows.has(pkg.id);
+                    const state = splitState[pkg.id];
+                    const lpPercentage = 100 - (pkg.vestBps / 10000 * 100);
+                    const vestPercentage = pkg.vestBps / 10000 * 100;
+                    return (
+                      <React.Fragment key={pkg.id}>
+                        <tr className={`hover:bg-gray-50 ${!pkg.active ? 'bg-gray-50' : ''}`}>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                className="text-gray-600 hover:text-gray-900"
+                                onClick={() => toggleExpand(pkg)}
+                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                              >
+                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              </button>
+                              <div>
+                                <div className={`font-medium ${!pkg.active ? 'text-gray-500' : 'text-gray-900'}`}>{pkg.name}</div>
+                                <div className="text-sm text-gray-500">ID: {pkg.id}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant={pkg.active ? "success" : "default"}>
+                              {pkg.active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`font-medium ${!pkg.active ? 'text-gray-500' : ''}`}>${formatUSDT(pkg.entryUSDT)}</span>
+                            <div className="text-sm text-gray-500">USDT</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant="info">{formatPercentage(pkg.vestBps)}</Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`text-sm ${!pkg.active ? 'text-gray-500' : ''}`}>{formatDuration(pkg.duration)}</span>
+                            {pkg.cliff > 0 && (
+                              <div className="text-xs text-gray-500">
+                                Cliff: {formatDuration(pkg.cliff)}
+                              </div>
                             )}
-                            {pkg.active ? 'Pause' : 'Activate'}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(pkg)}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant="success">{formatPercentage(pkg.referralBps)}</Badge>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleExpand(pkg)}
+                              >
+                                {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />} Details
+                              </Button>
+                              <Button
+                                variant={pkg.active ? "outline" : "default"}
+                                size="sm"
+                                onClick={() => handleTogglePackage(pkg)}
+                                disabled={togglingPackage === pkg.id}
+                                className={pkg.active ? "text-orange-600 border-orange-600 hover:bg-orange-50" : "text-green-600 bg-green-600 hover:bg-green-700"}
+                              >
+                                {togglingPackage === pkg.id ? (
+                                  <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full" />
+                                ) : pkg.active ? (
+                                  <Pause className="h-3 w-3" />
+                                ) : (
+                                  <Play className="h-3 w-3" />
+                                )}
+                                {pkg.active ? 'Pause' : 'Activate'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(pkg)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-gray-50">
+                            <td className="px-6 py-4" colSpan={7}>
+                              <div className="space-y-4">
+                                <div className="flex items-center space-x-2 text-gray-700">
+                                  <Percent className="h-4 w-4" />
+                                  <h4 className="font-semibold">Token Distribution</h4>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                  <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                                    <span className="text-gray-600">USDT Split:</span>
+                                    <span className="font-medium">
+                                      {lpPercentage.toFixed(0)}% LP <span className="text-gray-400 mx-1">|</span> {vestPercentage.toFixed(0)}% Treasury
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                                    <span className="text-gray-600">SHARE Split:</span>
+                                    <span className="font-medium">
+                                      {lpPercentage.toFixed(0)}% LP <span className="text-gray-400 mx-1">|</span> {vestPercentage.toFixed(0)}% Vest
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                  {state?.loading ? (
+                                    <div className="py-4 text-sm text-gray-600">Loading breakdown…</div>
+                                  ) : state?.splits ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                      <div className="bg-white rounded-md p-3 border">
+                                        <p className="text-gray-600">LP Pool USDT</p>
+                                        <p className="font-medium">${formatUSDT(state.splits.usdtPool)}</p>
+                                      </div>
+                                      <div className="bg-white rounded-md p-3 border">
+                                        <p className="text-gray-600">Treasury USDT</p>
+                                        <p className="font-medium">${formatUSDT(state.splits.usdtVault)}</p>
+                                      </div>
+                                      <div className="bg-white rounded-md p-3 border">
+                                        <p className="text-gray-600">LP Pool BLOCKS</p>
+                                        <p className="font-medium">{formatBLOCKS(state.splits.poolTokens)}</p>
+                                      </div>
+                                      <div className="bg-white rounded-md p-3 border">
+                                        <p className="text-gray-600">Vested BLOCKS</p>
+                                        <p className="font-medium">{formatBLOCKS(state.splits.vestTokens)}</p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="py-4 text-sm text-red-600">Failed to load breakdown.</div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

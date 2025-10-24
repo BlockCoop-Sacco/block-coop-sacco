@@ -7,6 +7,7 @@ const require = createRequire(import.meta.url);
 // Import ABIs via require to avoid import assertion issues
 const packageManagerABI = require('../abi/PackageManager.json');
 const usdtABI = require('../abi/USDT.json');
+const adapterABI = require('../abi/MpesaTreasuryAdapter.json');
 
 import '../config/env.js';
 
@@ -14,11 +15,13 @@ import '../config/env.js';
 
 class BlockchainService {
   constructor() {
-    this.rpcUrl = process.env.BSC_RPC_URL;
+    this.rpcUrl = process.env.BSC_RPC_URL || 'https://bsc-dataseed1.binance.org';
     this.privateKey = process.env.PRIVATE_KEY;
     this.packageManagerAddress = process.env.PACKAGE_MANAGER_ADDRESS;
     this.usdtAddress = process.env.USDT_ADDRESS;
-    this.chainId = parseInt(process.env.BLOCKCHAIN_CHAIN_ID || '56');
+    this.adapterAddress = process.env.ADAPTER_ADDRESS; // optional; when set, use adapter flow
+    this.safeAddress = process.env.SAFE_ADDRESS; // optional; used for balance checks
+    this.chainId = 56;
 
     // Validate configuration
     this.validateConfiguration();
@@ -40,15 +43,31 @@ class BlockchainService {
       this.wallet
     );
 
+    // Initialize adapter if configured
+    this.adapter = null;
+    if (this.adapterAddress && ethers.isAddress(this.adapterAddress)) {
+      this.adapter = new ethers.Contract(
+        this.adapterAddress,
+        adapterABI.abi,
+        this.wallet
+      );
+    }
+
+    // Will be lazily initialized when needed
+    this.shareToken = null;
+    this.shareTokenAddress = null;
+
     // Transaction retry configuration
     this.maxRetries = parseInt(process.env.MAX_RETRY_ATTEMPTS || '3');
     this.retryDelay = parseInt(process.env.RETRY_DELAY || '5000');
 
     logger.info('Blockchain service initialized:', {
-      network: this.chainId === 56 ? 'BSC Mainnet' : 'BSC Testnet',
+      network: 'BSC Mainnet',
       wallet: this.wallet.address,
       packageManager: this.packageManagerAddress,
       usdt: this.usdtAddress,
+      adapter: this.adapterAddress || '(none)',
+      safe: this.safeAddress || '(none)',
       chainId: this.chainId
     });
   }
@@ -110,6 +129,12 @@ class BlockchainService {
       // Check treasury balance for required USDT
       await this.checkTreasuryBalance(usdtAmount);
 
+      // Ensure referral reward can be transferred from treasury if a referrer is present
+      // We approve a large allowance up-front to avoid 0-reward cases due to missing allowance
+      if (referrerAddress && ethers.isAddress(referrerAddress)) {
+        await this.ensureReferralAllowance();
+      }
+
       // Execute the purchase with retry logic
       const result = await this.executePurchaseTransaction(
         packageId,
@@ -168,6 +193,37 @@ class BlockchainService {
   // Execute the actual purchase transaction
   async executePurchaseTransaction(packageId, usdtAmount, referrerAddress, walletAddress) {
     try {
+      // If adapter is configured, route through adapter (Safe-funded flow)
+      if (this.adapter) {
+        logger.info('Purchasing package via adapter (Safe-funded)...', {
+          packageId,
+          referrer: referrerAddress || ethers.ZeroAddress,
+          buyer: walletAddress,
+          adapter: this.adapterAddress
+        });
+
+        const referrer = referrerAddress || ethers.ZeroAddress;
+        const gasEstimate = await this.adapter.purchaseUsingTreasury.estimateGas(walletAddress, packageId, referrer);
+        const gasLimit = gasEstimate + (gasEstimate * 20n / 100n);
+        const purchaseTx = await this.adapter.purchaseUsingTreasury(walletAddress, packageId, referrer, { gasLimit });
+        const receipt = await purchaseTx.wait();
+
+        logger.info('Package purchased via adapter successfully:', {
+          txHash: purchaseTx.hash,
+          blockNumber: receipt.blockNumber,
+          gasUsed: receipt.gasUsed.toString(),
+          gasLimit: gasLimit.toString()
+        });
+
+        return {
+          success: true,
+          txHash: purchaseTx.hash,
+          blockNumber: receipt.blockNumber,
+          gasUsed: receipt.gasUsed.toString()
+        };
+      }
+
+      // Otherwise, direct flow (legacy): approve and call PM
       // Step 1: Check current allowance
       const currentAllowance = await this.usdtToken.allowance(this.wallet.address, this.packageManagerAddress);
 
@@ -189,22 +245,35 @@ class BlockchainService {
         });
       }
 
-      // Step 3: Purchase package
+      // Step 3: Purchase package (prefer server-authorized purchaseFor when role is granted)
       logger.info('Purchasing package...', {
         packageId,
         referrer: referrerAddress || ethers.ZeroAddress,
-        beneficiary: walletAddress
+        buyer: walletAddress
       });
 
       const referrer = referrerAddress || ethers.ZeroAddress;
 
-      // Estimate gas first
-      const gasEstimate = await this.packageManager.purchase.estimateGas(packageId, referrer);
-      const gasLimit = gasEstimate + (gasEstimate * 20n / 100n); // Add 20% buffer
+      // Detect if our signer has SERVER_ROLE
+      let usePurchaseFor = false;
+      try {
+        const serverRole = await this.packageManager.SERVER_ROLE();
+        usePurchaseFor = await this.packageManager.hasRole(serverRole, this.wallet.address);
+      } catch {}
 
-      const purchaseTx = await this.packageManager.purchase(packageId, referrer, {
-        gasLimit
-      });
+      // Estimate gas and execute
+      let gasEstimate;
+      let gasLimit;
+      let purchaseTx;
+      if (usePurchaseFor && walletAddress && ethers.isAddress(walletAddress)) {
+        gasEstimate = await this.packageManager.purchaseFor.estimateGas(walletAddress, packageId, referrer);
+        gasLimit = gasEstimate + (gasEstimate * 20n / 100n);
+        purchaseTx = await this.packageManager.purchaseFor(walletAddress, packageId, referrer, { gasLimit });
+      } else {
+        gasEstimate = await this.packageManager.purchase.estimateGas(packageId, referrer);
+        gasLimit = gasEstimate + (gasEstimate * 20n / 100n); // Add 20% buffer
+        purchaseTx = await this.packageManager.purchase(packageId, referrer, { gasLimit });
+      }
 
       const receipt = await purchaseTx.wait();
 
@@ -215,24 +284,25 @@ class BlockchainService {
         gasLimit: gasLimit.toString()
       });
 
-      // Parse events to get purchase details
-      const purchaseEvent = receipt.logs.find(log => {
+      // Parse events to get purchase and referral details
+      for (const log of receipt.logs) {
         try {
           const parsed = this.packageManager.interface.parseLog(log);
-          return parsed.name === 'Purchased';
-        } catch {
-          return false;
-        }
-      });
-
-      if (purchaseEvent) {
-        const parsed = this.packageManager.interface.parseLog(purchaseEvent);
-        logger.info('Purchase event details:', {
-          buyer: parsed.args.buyer,
-          packageId: parsed.args.packageId.toString(),
-          usdtAmount: ethers.formatUnits(parsed.args.usdtAmount, 18),
-          totalTokens: ethers.formatUnits(parsed.args.totalTokens, 18)
-        });
+          if (parsed.name === 'Purchased') {
+            logger.info('Purchase event details:', {
+              buyer: parsed.args.buyer,
+              packageId: parsed.args.packageId.toString(),
+              usdtAmount: ethers.formatUnits(parsed.args.usdtAmount, 18),
+              totalTokens: ethers.formatUnits(parsed.args.totalTokens, 18)
+            });
+          } else if (parsed.name === 'ReferralPaid') {
+            logger.info('Referral paid:', {
+              referrer: parsed.args.referrer,
+              buyer: parsed.args.buyer,
+              reward: ethers.formatUnits(parsed.args.reward, 18)
+            });
+          }
+        } catch {}
       }
 
       return {
@@ -249,6 +319,39 @@ class BlockchainService {
         reason: error.reason
       });
       throw error;
+    }
+  }
+
+  // Ensure the contract can transfer referral rewards from treasury (backend wallet)
+  async ensureReferralAllowance() {
+    try {
+      if (!this.shareTokenAddress) {
+        this.shareTokenAddress = await this.packageManager.shareToken();
+      }
+      if (!this.shareToken) {
+        this.shareToken = new ethers.Contract(this.shareTokenAddress, usdtABI.abi, this.wallet);
+      }
+
+      const currentAllowance = await this.shareToken.allowance(this.wallet.address, this.packageManagerAddress);
+      const balance = await this.shareToken.balanceOf(this.wallet.address);
+
+      logger.debug('Referral allowance/balance check:', {
+        allowance: currentAllowance.toString(),
+        balance: balance.toString(),
+        spender: this.packageManagerAddress
+      });
+
+      // If allowance is low, approve a very large amount
+      const threshold = (2n ** 255n); // half of max uint256
+      if (currentAllowance < threshold) {
+        const approveTx = await this.shareToken.approve(this.packageManagerAddress, ethers.MaxUint256);
+        await approveTx.wait();
+        logger.info('Approved share token allowance for referral payouts:', {
+          txHash: approveTx.hash
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to ensure referral allowance (will attempt referral anyway):', error.message);
     }
   }
 
@@ -294,7 +397,10 @@ class BlockchainService {
   // Check treasury USDT balance
   async checkTreasuryBalance(requiredAmount) {
     try {
-      const balance = await this.usdtToken.balanceOf(this.wallet.address);
+      const balanceHolder = this.safeAddress && ethers.isAddress(this.safeAddress)
+        ? this.safeAddress
+        : this.wallet.address;
+      const balance = await this.usdtToken.balanceOf(balanceHolder);
 
       logger.debug('Treasury balance check:', {
         required: ethers.formatUnits(requiredAmount, 18),
@@ -304,7 +410,7 @@ class BlockchainService {
 
       if (balance < requiredAmount) {
         throw new BlockchainError(
-          `Insufficient treasury USDT balance. Required: ${ethers.formatUnits(requiredAmount, 18)}, Available: ${ethers.formatUnits(balance, 18)}`
+          `Insufficient treasury USDT balance. Required: ${ethers.formatUnits(requiredAmount, 18)}, Available: ${ethers.formatUnits(balance, 18)} (holder: ${balanceHolder})`
         );
       }
 
@@ -402,6 +508,16 @@ class BlockchainService {
         packageId: packageId.toString(),
         usdtAmount: ethers.formatUnits(usdtAmount, 18),
         totalTokens: ethers.formatUnits(totalTokens, 18),
+        txHash: event.transactionHash
+      });
+    });
+
+    // Listen for referral payouts
+    this.packageManager.on('ReferralPaid', (referrer, buyer, reward, event) => {
+      logger.info('Referral payout detected:', {
+        referrer,
+        buyer,
+        reward: ethers.formatUnits(reward, 18),
         txHash: event.transactionHash
       });
     });

@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { useWeb3 } from '../providers/Web3Provider';
 import { getContracts } from '../lib/contracts';
 import { formatUSDT, formatBLOCKS, parseEther } from '../lib/utils';
-import { useEnhancedBalances, useBalances, useCorrectedPortfolioStats } from '../hooks/useContracts';
+import { useEnhancedBalances, useBalances, useUserPortfolioStats } from '../hooks/useContracts';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
@@ -23,7 +23,7 @@ interface VestingSnapshot {
 export function RedeemPage() {
   const { account: address, isConnected, isCorrectNetwork, signer } = useWeb3();
   const { balances, formattedBalances, correctionApplied } = useEnhancedBalances();
-  const { correctedStats, formattedCorrectedStats } = useCorrectedPortfolioStats();
+  const { stats, formattedStats } = useUserPortfolioStats();
   const [lpAmount, setLpAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [vestedAmount, setVestedAmount] = useState<bigint>(0n);
@@ -31,17 +31,16 @@ export function RedeemPage() {
   const [preRedeemSnapshot, setPreRedeemSnapshot] = useState<VestingSnapshot | null>(null);
   const [postRedeemSnapshot, setPostRedeemSnapshot] = useState<VestingSnapshot | null>(null);
   const [showComparison, setShowComparison] = useState(false);
+  const SHOW_BASIC_REDEMPTION = false;
 
   // Helper function to get corrected LP balance for user interactions
-  const getCorrectedLPBalance = () => {
-    // Use the corrected LP tokens from portfolio stats if available
-    const correctedLPTokens = correctedStats?.totalLPTokens || 0n;
-    return correctedLPTokens > 0n ? correctedLPTokens : balances.lp;
+  const getLPBalance = () => {
+    return balances.lp;
   };
 
-  // Helper function to get formatted corrected LP balance for display
-  const getFormattedCorrectedLPBalance = () => {
-    return formattedCorrectedStats?.totalLPTokens || formattedBalances.lp;
+  // Helper function to get formatted LP balance for display
+  const getFormattedLPBalance = () => {
+    return formattedBalances.lp;
   };
 
   useEffect(() => {
@@ -95,7 +94,7 @@ export function RedeemPage() {
 
       // Network & Connection Validation
       if (!isConnected || !isCorrectNetwork) {
-        toast.error('Connect your wallet and switch to BSC Testnet');
+        toast.error('Connect your wallet and switch to BSC Mainnet');
         return;
       }
 
@@ -165,7 +164,7 @@ export function RedeemPage() {
 
       // Network & Connection Validation
       if (!isConnected || !isCorrectNetwork) {
-        toast.error('Connect your wallet and switch to BSC Testnet');
+        toast.error('Connect your wallet and switch to BSC Mainnet');
         return;
       }
 
@@ -345,108 +344,105 @@ export function RedeemPage() {
         </Card>
 
         {/* Basic BLOCKS-LP Token Redemption - Fallback Option */}
-        <Card className="animate-fade-in">
-          <CardHeader>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-primary-100 rounded-lg">
-                <ArrowLeftRight className="h-6 w-6 text-primary-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Basic Redemption</h2>
-                <p className="text-sm text-gray-600">Simple exchange via smart contract (fallback method)</p>
-              </div>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Your LP Balance:</span>
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium">
-                    {getFormattedCorrectedLPBalance()} BLOCKS-LP
-                  </span>
-                  {formattedCorrectedStats?.correctionApplied && (
-                    <Badge variant="secondary" className="text-xs">
-                      Corrected
-                    </Badge>
-                  )}
+        {SHOW_BASIC_REDEMPTION && (
+          <Card className="animate-fade-in">
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary-100 rounded-lg">
+                  <ArrowLeftRight className="h-6 w-6 text-primary-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Basic Redemption</h2>
+                  <p className="text-sm text-gray-600">Simple exchange via smart contract (fallback method)</p>
                 </div>
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <Input
-                label="Amount to Redeem"
-                type="number"
-                placeholder="0.0"
-                value={lpAmount}
-                onChange={(e) => setLpAmount(e.target.value)}
-              />
-              
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const correctedBalance = getCorrectedLPBalance();
-                    setLpAmount(ethers.formatEther(correctedBalance / 4n));
-                  }}
-                >
-                  25%
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const correctedBalance = getCorrectedLPBalance();
-                    setLpAmount(ethers.formatEther(correctedBalance / 2n));
-                  }}
-                >
-                  50%
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const correctedBalance = getCorrectedLPBalance();
-                    setLpAmount(ethers.formatEther((correctedBalance * 3n) / 4n));
-                  }}
-                >
-                  75%
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const correctedBalance = getCorrectedLPBalance();
-                    setLpAmount(ethers.formatEther(correctedBalance));
-                  }}
-                >
-                  Max
-                </Button>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Your LP Balance:</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium">
+                      {getFormattedLPBalance()} BLOCKS-LP
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <Button
-              onClick={handleRedeemLP}
-              loading={loading}
-              disabled={!lpAmount || parseEther(lpAmount) <= 0n || (() => {
-                const userInputAmount = parseEther(lpAmount);
-                const correctedLPTokens = correctedStats?.totalLPTokens || 0n;
-                const rawAmount = correctedLPTokens > 0n && balances.lp > 0n
-                  ? (userInputAmount * balances.lp) / correctedLPTokens
-                  : userInputAmount;
-                return rawAmount > balances.lp;
-              })()}
-              className="w-full"
-              size="lg"
-            >
-              <TrendingDown className="h-4 w-4 mr-2" />
-              Redeem BLOCKS-LP Tokens
-            </Button>
-          </CardContent>
-        </Card>
+              <div className="space-y-4">
+                <Input
+                  label="Amount to Redeem"
+                  type="number"
+                  placeholder="0.0"
+                  value={lpAmount}
+                  onChange={(e) => setLpAmount(e.target.value)}
+                />
+                
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const balance = getLPBalance();
+                      setLpAmount(ethers.formatEther(balance / 4n));
+                    }}
+                  >
+                    25%
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const balance = getLPBalance();
+                      setLpAmount(ethers.formatEther(balance / 2n));
+                    }}
+                  >
+                    50%
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const balance = getLPBalance();
+                      setLpAmount(ethers.formatEther((balance * 3n) / 4n));
+                    }}
+                  >
+                    75%
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const balance = getLPBalance();
+                      setLpAmount(ethers.formatEther(balance));
+                    }}
+                  >
+                    Max
+                  </Button>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleRedeemLP}
+                loading={loading}
+                disabled={!lpAmount || parseEther(lpAmount) <= 0n || (() => {
+                  const userInputAmount = parseEther(lpAmount);
+                  const correctedLPTokens = correctedStats?.totalLPTokens || 0n;
+                  const rawAmount = correctedLPTokens > 0n && balances.lp > 0n
+                    ? (userInputAmount * balances.lp) / correctedLPTokens
+                    : userInputAmount;
+                  return rawAmount > balances.lp;
+                })()}
+                className="w-full"
+                size="lg"
+              >
+                <TrendingDown className="h-4 w-4 mr-2" />
+                Redeem BLOCKS-LP Tokens
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Vested Token Claiming */}
         <Card className="animate-fade-in">

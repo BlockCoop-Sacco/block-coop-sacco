@@ -30,6 +30,17 @@ dist-ssr
 backend/.env
 backend/.env.local
 backend/.env.production
+*.env*
+*secrets*
+*.bak
+
+# Build artifacts and deployment bundles
+cpanel-deployment/assets/
+cpanel-deployment/*.zip
+*.zip
+
+# Env backups (timestamped)
+.env.backup.*
 
 # Sensitive files
 *.key
@@ -37,3 +48,6 @@ backend/.env.production
 *.p12
 secrets/
 private/
+**/secrets/**
+**/*.private
+**/*.secret

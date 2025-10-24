@@ -1,0 +1,38 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        { "internalType": "address", "name": "_usdt", "type": "address" },
+        { "internalType": "address", "name": "_pm", "type": "address" },
+        { "internalType": "address", "name": "_treasury", "type": "address" },
+        { "internalType": "address", "name": "_backend", "type": "address" }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        { "internalType": "address", "name": "buyer", "type": "address" },
+        { "internalType": "uint256", "name": "packageId", "type": "uint256" },
+        { "internalType": "address", "name": "referrer", "type": "address" }
+      ],
+      "name": "purchaseUsingTreasury",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "backendEOA",
+      "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}
+
+
+
+
+
+

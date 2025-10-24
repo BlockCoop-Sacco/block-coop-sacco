@@ -125,3 +125,17 @@ export function parseEther(value: string): bigint {
 export function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
+
+// Additional numeric formatters for UI metrics
+export function formatPercentValue(value: number, decimals = 2): string {
+  if (!isFinite(value)) return '—';
+  return `${value.toFixed(decimals)}%`;
+}
+
+export function formatCurrencyNumber(value: number, decimals = 2): string {
+  if (!isFinite(value)) return '—';
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}

@@ -5,13 +5,14 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load env from backend/.env (if exists)
-dotenv.config({ path: join(__dirname, '../../.env') });
-// If production, load backend/.env.production to override
-if (process.env.NODE_ENV === 'production') {
-  dotenv.config({ path: join(__dirname, '../../.env.production') });
-}
-// Also load repo root .env (for monorepo/local dev)
+// Load order:
+// 1) Repo root .env (baseline for dev tooling)
 dotenv.config({ path: join(__dirname, '../../../.env') });
+
+// 2) backend/.env (service-specific defaults)
+dotenv.config({ path: join(__dirname, '../../.env') });
+
+// 3) backend/.env.production (override for production deploys)
+dotenv.config({ path: join(__dirname, '../../.env.production'), override: true });
 
 export {};

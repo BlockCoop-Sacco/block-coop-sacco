@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "chainId": "56",
+  "createdAt": 1760150000001,
+  "meta": {
+    "name": "Reset USDT allowance to Adapter (approve 0)",
+    "description": "Sets allowance to zero for adapter spender (safety reset)",
+    "txBuilderVersion": "1.16.3",
+    "createdFromSafeAddress": "0xD04edC3225cEF6e82e50Dc559d38733180743b94",
+    "createdFromOwnerAddress": "",
+    "checksum": ""
+  },
+  "transactions": [
+    {
+      "to": "0x55d398326f99059fF775485246999027B3197955",
+      "value": "0",
+      "data": null,
+      "contractMethod": {
+        "inputs": [
+          { "internalType": "address", "name": "spender", "type": "address" },
+          { "internalType": "uint256", "name": "value", "type": "uint256" }
+        ],
+        "name": "approve",
+        "payable": false
+      },
+      "contractInputsValues": {
+        "spender": "0x244C89ED408d6b5D8f798908451d4477c18Ca650",
+        "value": "0"
+      }
+    }
+  ]
+}
+
+
+

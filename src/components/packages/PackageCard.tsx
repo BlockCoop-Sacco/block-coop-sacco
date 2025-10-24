@@ -3,16 +3,22 @@ import { PackageWithId, PackageSplits, calculateSplitsWithTargetPrice } from '..
 import { formatUSDT, formatBLOCKS, formatExchangeRate, formatPercentage, formatDuration } from '../../lib/utils';
 import { Card, CardContent, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
-import { TrendingUp, Clock, Users, Percent, Loader2 } from 'lucide-react';
+import { Clock, Users, Coins, RefreshCw, Flame } from 'lucide-react';
+import { useCurrentMarketPrice } from '../../hooks/useContracts';
+import Tilt from 'react-parallax-tilt';
+import { motion, useSpring, useTransform, AnimatePresence } from 'framer-motion';
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 interface PackageCardProps {
   package: PackageWithId;
   onPurchase: (pkg: PackageWithId) => void;
+  featured?: boolean;
 }
 
-function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
+function PackageCardInner({ package: pkg, onPurchase, featured }: PackageCardProps) {
   const [splits, setSplits] = useState<PackageSplits>({
     totalTokens: 0n,
     vestTokens: 0n,
@@ -20,7 +26,9 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
     usdtPool: 0n,
     usdtVault: 0n,
   });
-  const [loading, setLoading] = useState(true);
+  
+  const { marketPrice } = useCurrentMarketPrice();
+  const [hovered, setHovered] = useState(false);
 
   // Debug raw package values from props
   useEffect(() => {
@@ -44,144 +52,166 @@ function PackageCardInner({ package: pkg, onPurchase }: PackageCardProps) {
   useEffect(() => {
     const loadSplits = async () => {
       try {
-        setLoading(true);
         const calculatedSplits = await calculateSplitsWithTargetPrice(pkg);
         setSplits(calculatedSplits);
       } catch (error) {
         console.error('Error calculating splits for package:', pkg.name, error);
-      } finally {
-        setLoading(false);
       }
     };
 
     loadSplits();
   }, [pkg]);
 
-  const lpPercentage = 100 - (pkg.vestBps / 10000 * 100); // Convert basis points to percentage
-  const vestPercentage = pkg.vestBps / 10000 * 100; // Convert basis points to percentage 
+  // ROI Calculations
+  const exchangeRateNum = Number(pkg.exchangeRate) / 1e18;
+  const marketPriceNum = marketPrice ? Number(marketPrice) / 1e18 : null;
+  const entryAmountNum = Number(pkg.entryUSDT) / 1e18;
+  const roiPct = marketPriceNum != null && exchangeRateNum > 0
+    ? ((marketPriceNum - exchangeRateNum) / exchangeRateNum) * 100
+    : null;
+  const roiValue = roiPct != null ? (roiPct / 100) * entryAmountNum : null;
+
+  // Animated numbers
+  const roiPctSpring = useSpring(roiPct ?? 0, { stiffness: 80, damping: 20, mass: 0.8 });
+  const roiValueSpring = useSpring(roiValue ?? 0, { stiffness: 80, damping: 20, mass: 0.8 });
+  useEffect(() => {
+    if (roiPct != null) roiPctSpring.set(roiPct);
+    if (roiValue != null) roiValueSpring.set(roiValue);
+  }, [roiPct, roiValue]);
+  const roiPctText = useTransform(roiPctSpring, (v) => `${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`);
+  const roiValueText = useTransform(roiValueSpring, (v) => `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
   
   return (
-    <Card className="group hover:scale-[1.02] transition-all duration-300 animate-fade-in">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-1">{pkg.name}</h3>
-            <div className="flex items-center text-2xl font-bold text-primary-600">
-              <span className="text-sm text-gray-500 mr-1">$</span>
-              {formatUSDT(pkg.entryUSDT)}
-              <span className="text-sm text-gray-500 ml-1">USDT</span>
+    <Tilt glareEnable={true} glareMaxOpacity={0.15} glareColor="#38bdf8" glarePosition="all" scale={1.01} tiltMaxAngleX={6} tiltMaxAngleY={6}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        whileHover={{ scale: 1.005 }}
+        onHoverStart={() => setHovered(true)}
+        onHoverEnd={() => setHovered(false)}
+      >
+        <Card className={`group relative overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:ring-1 hover:ring-sky-400/40 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ${featured ? 'ring-2 ring-amber-400/60 shadow-[0_0_40px_rgba(251,191,36,0.25)]' : ''}`}>
+          <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-gradient-to-tr from-sky-400/20 via-blue-500/10 to-indigo-600/10 blur-2xl" />
+          {featured && (
+            <div className="absolute top-3 right-3 z-10">
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-600 shadow-[0_4px_14px_rgba(251,191,36,0.4)]">
+                <Flame className="h-3.5 w-3.5" /> Popular
+              </span>
             </div>
-          </div>
-          <Badge variant="info">
-            <TrendingUp className="w-3 h-3 mr-1" />
-            {pkg.active ? 'Active' : 'Inactive'}
-          </Badge>
-        </div>
-
-        <div className="space-y-4">
-          {/* Distribution */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-              <Percent className="w-4 h-4 mr-2" />
-              Token Distribution
-            </h4>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">USDT Split:</span>
-                <div className="text-sm font-medium">
-                  <span className="text-accent-600">{lpPercentage}% LP</span>
-                  <span className="text-gray-400 mx-2">|</span>
-                  <span className="text-primary-600">{vestPercentage}% Treasury</span>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">SHARE Split:</span>
-                <div className="text-sm font-medium">
-                  <span className="text-accent-600">{lpPercentage}% LP</span>
-                  <span className="text-gray-400 mx-2">|</span>
-                  <span className="text-primary-600">{vestPercentage}% Vest</span>
-                </div>
-              </div>
-              
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full flex">
-                  <div className="bg-accent-500" style={{ width: `${lpPercentage}%` }} />
-                  <div className="bg-primary-500" style={{ width: `${vestPercentage}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Package Details */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-gray-400" />
+          )}
+          <CardContent className="p-6 text-slate-900 dark:text-white">
+            {/* Top Section */}
+            <div className="flex items-start justify-between mb-5 text-slate-900 dark:text-white">
               <div>
-                <p className="text-xs text-gray-500">Vesting</p>
-                <p className="text-sm font-medium">{formatDuration(pkg.duration)}</p>
+                <h3 className="text-[1.25rem] font-bold">{pkg.name}</h3>
+                <div className="mt-1 text-[1.5rem] font-semibold flex items-baseline gap-2">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-600 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">
+                    ${formatUSDT(pkg.entryUSDT)}
+                  </span>
+                  <span className="text-sm font-normal text-slate-700 dark:text-slate-300">USDT</span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`h-2.5 w-2.5 rounded-full ${pkg.active ? 'bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.45)] animate-pulse' : 'bg-slate-400'}`} />
+                <span className="text-xs font-medium">{pkg.active ? 'Active' : 'Locked'}</span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Users className="w-4 h-4 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Referral</p>
-                <p className="text-sm font-medium">{formatPercentage(pkg.referralBps)}</p>
+            {/* Middle Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-slate-900 dark:text-white">
+              <div className="rounded-lg p-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="w-16 h-16">
+                    <CircularProgressbar
+                      value={Math.max(0, Math.min(roiPct ?? 0, 300))}
+                      maxValue={300}
+                      strokeWidth={10}
+                      styles={buildStyles({
+                        pathColor: 'rgb(16,185,129)',
+                        trailColor: 'rgba(255,255,255,0.15)',
+                        textColor: '#111827',
+                      })}
+                    />
+                  </div>
+                  <div className="text-right">
+                    <Tooltip.Provider delayDuration={150}>
+                      <Tooltip.Root>
+                        <Tooltip.Trigger asChild>
+                          <div className="text-xs flex items-center justify-end">ROI %</div>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content className="rounded-md bg-black/80 px-2 py-1 text-xs text-white" sideOffset={6}>
+                            Return on Investment compared to exchange rate
+                            <Tooltip.Arrow className="fill-black/80" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
+                    <div className="text-2xl font-extrabold">
+                      {roiPct != null ? <motion.span>{roiPctText}</motion.span> : '0.00%'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg p-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <div className="flex items-start justify-between">
+                  <div className="text-xs">Potential ROI Value</div>
+                  <div className="text-lg font-semibold">{roiValue != null ? <motion.span>{roiValueText}</motion.span> : '$0.00'}</div>
+                </div>
+                <div className="mt-3 border-t border-white/10 pt-3 flex items-center justify-between text-sm">
+                  <div className="flex items-center space-x-2"><Coins className="h-4 w-4" /><span>Tokens</span></div>
+                  <div className="font-medium">{formatBLOCKS(splits.totalTokens)} BLOCKS</div>
+                </div>
+                <div className="mt-2 border-t border-white/10 pt-3 flex items-center justify-between text-sm">
+                  <div className="flex items-center space-x-2"><RefreshCw className="h-4 w-4" /><span>Exchange Rate</span></div>
+                  <div className="font-medium">{formatExchangeRate(pkg.exchangeRate)} USDT/BLOCKS</div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="w-4 h-4 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Exchange Rate</p>
-                <p className="text-sm font-medium">{formatExchangeRate(pkg.exchangeRate)} USDT/BLOCKS</p>
+            {/* Bottom Section */}
+            <div className="mt-6 space-y-3 text-slate-900 dark:text-white">
+              <div className="flex items-center space-x-2 text-sm">
+                <Clock className="w-4 h-4" />
+                <span>Vesting Period:</span>
+                <span className="font-medium">{formatDuration(pkg.duration)}</span>
               </div>
+              <div className="h-1.5 rounded bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 opacity-70" />
             </div>
-          </div>
 
-          {/* Breakdown */}
-          <div className="border-t pt-4">
-            {loading ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                <span className="ml-2 text-sm text-gray-500">Calculating with current target price...</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500">LP Pool USDT</p>
-                  <p className="font-medium">{formatUSDT(splits.usdtPool)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Treasury USDT</p>
-                  <p className="font-medium">{formatUSDT(splits.usdtVault)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">LP Pool BLOCKS</p>
-                  <p className="font-medium">{formatBLOCKS(splits.poolTokens)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Vested BLOCKS</p>
-                  <p className="font-medium">{formatBLOCKS(splits.vestTokens)}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-      
-      <CardFooter className="p-6 pt-0">
-        <Button 
-          onClick={() => onPurchase(pkg)}
-          className="w-full group-hover:shadow-lg transition-all duration-300"
-          size="lg"
-        >
-          Purchase Package
-        </Button>
-      </CardFooter>
-    </Card>
+            <AnimatePresence>
+              {hovered && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="mt-3 text-xs text-slate-900 dark:text-white flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Referral:</span>
+                    <span className="font-medium">{formatPercentage(pkg.referralBps)}</span>
+                  </div>
+                  <div>Vesting applies to portion of tokens</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+
+          <CardFooter className="p-6 pt-0">
+            <Button 
+              onClick={() => onPurchase(pkg)}
+              className="w-full transition-all duration-300 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white shadow hover:shadow-[0_0_24px_rgba(59,130,246,0.45)]"
+              size="lg"
+            >
+              Purchase Package
+            </Button>
+          </CardFooter>
+        </Card>
+      </motion.div>
+    </Tilt>
   );
 }
 

@@ -26,14 +26,6 @@ export function NetworkSwitcher({
 
   const networks = [
     {
-      chainId: 97,
-      name: 'BSC Testnet',
-      description: 'For development and testing',
-      currency: 'tBNB',
-      explorer: 'https://testnet.bscscan.com',
-      color: 'blue'
-    },
-    {
       chainId: 56,
       name: 'BSC Mainnet',
       description: 'For production use',
@@ -51,10 +43,9 @@ export function NetworkSwitcher({
 
     setSwitching(targetChainId);
     try {
-      const success = await switchToNetwork(targetChainId);
+      const success = await switchToNetwork(56);
       if (success) {
-        const networkName = targetChainId === 56 ? 'BSC Mainnet' : 'BSC Testnet';
-        toast.success(`Successfully switched to ${networkName}`);
+        toast.success('Successfully switched to BSC Mainnet');
       } else {
         toast.error('Failed to switch network. Please try manually in your wallet.');
       }
@@ -162,7 +153,7 @@ export function NetworkSwitcher({
         {isConnected && !isCorrectNetwork && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              ⚠️ You're connected to an unsupported network. Please switch to BSC Testnet or Mainnet.
+              ⚠️ You're connected to an unsupported network. Please switch to BSC Mainnet.
             </p>
           </div>
         )}

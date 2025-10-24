@@ -19,12 +19,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useLiquidityRedemption, useSlippageTolerance, useLiquidityFormatting } from '../../hooks/useLiquidityRedemption';
-import { useEnhancedBalances, useBalances, useCorrectedPortfolioStats } from '../../hooks/useContracts';
+import { useEnhancedBalances, useBalances, useUserPortfolioStats } from '../../hooks/useContracts';
 import { useWeb3 } from '../../providers/Web3Provider';
 import { SlippageProtectionSettings, SlippageSettings } from './SlippageProtectionSettings';
 import { LiquidityRedemptionPreview } from './LiquidityRedemptionPreview';
 import { MEVProtectionSettings, MEVProtectionConfig } from './MEVProtectionSettings';
-import { getExchangeRateCorrection } from '../../lib/portfolioCorrection';
 
 interface LiquidityRedemptionCardProps {
   onRedemptionComplete?: () => void;
@@ -32,8 +31,8 @@ interface LiquidityRedemptionCardProps {
 
 export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedemptionCardProps) {
   const { isConnected, isCorrectNetwork } = useWeb3();
-  const { balances, formattedBalances, loading: balancesLoading, correctionApplied } = useEnhancedBalances();
-  const { correctedStats, formattedCorrectedStats } = useCorrectedPortfolioStats();
+  const { balances, formattedBalances, loading: balancesLoading } = useEnhancedBalances();
+  const { stats, formattedStats } = useUserPortfolioStats();
   const {
     preview,
     tokenPrices,
@@ -101,11 +100,8 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
     if (lpAmount && parseFloat(lpAmount) > 0) {
       const userInputAmount = parseEther(lpAmount);
 
-      // Convert user input (corrected) back to raw amount for preview
-      const correctedLPTokens = correctedStats?.totalLPTokens || 0n;
-      const rawAmount = correctedLPTokens > 0n && balances.lp > 0n
-        ? (userInputAmount * balances.lp) / correctedLPTokens
-        : userInputAmount;
+      // Use raw input directly for preview
+      const rawAmount = userInputAmount;
 
       if (rawAmount <= balances.lp) {
         getPreview(rawAmount);
@@ -115,11 +111,11 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
     } else {
       clearPreview();
     }
-  }, [lpAmount, balances.lp, correctedStats?.totalLPTokens, getPreview, clearPreview]);
+  }, [lpAmount, balances.lp, getPreview, clearPreview]);
 
   const handleRedemption = async () => {
     if (!isConnected || !isCorrectNetwork) {
-      toast.error('Please connect your wallet and switch to BSC Testnet');
+      toast.error('Please connect your wallet and switch to BSC Mainnet');
       return;
     }
 
@@ -130,11 +126,8 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
 
     const userInputAmount = parseEther(lpAmount);
 
-    // Convert user input (corrected) back to raw amount for transaction
-    const correctedLPTokens = correctedStats?.totalLPTokens || 0n;
-    const rawAmount = correctedLPTokens > 0n && balances.lp > 0n
-      ? (userInputAmount * balances.lp) / correctedLPTokens
-      : userInputAmount;
+    // Use raw input directly for transaction
+    const rawAmount = userInputAmount;
 
     if (rawAmount > balances.lp) {
       toast.error('Insufficient LP token balance');
@@ -162,11 +155,7 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
 
   const handleMaxClick = () => {
     if (balances.lp > 0n) {
-      // Use the corrected LP tokens from portfolio stats
-      const correctedLPTokens = correctedStats?.totalLPTokens || 0n;
-      const correctedBalance = correctedLPTokens > 0n ? correctedLPTokens : balances.lp;
-
-      setLpAmount(formatUnits(correctedBalance, 18));
+      setLpAmount(formatUnits(balances.lp, 18));
     }
   };
 
@@ -233,12 +222,7 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
           </div>
           <div className="flex justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-2">
-              <span>Balance: {formattedCorrectedStats?.totalLPTokens || formattedBalances.lp} BLOCKS-LP</span>
-              {formattedCorrectedStats?.correctionApplied && (
-                <Badge variant="secondary" className="text-xs">
-                  Corrected
-                </Badge>
-              )}
+              <span>Balance: {formattedBalances.lp} BLOCKS-LP</span>
             </div>
             {tokenPrices && (
               <span>1 BLOCKS = ${tokenPrices.shareTokenPriceInUSDT.toFixed(4)} USDT</span>
@@ -246,16 +230,7 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
           </div>
         </div>
 
-        {/* LP Token Inflation Warning */}
-        {correctionApplied && balances.lp > 0n && getExchangeRateCorrection(balances.lp) < 1 && (
-          <Alert className="border-yellow-200 bg-yellow-50">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-700 text-xs">
-              <strong>LP Token Inflation Notice:</strong> Your BLOCKS-LP tokens have inflated values.
-              The displayed amounts are corrected for better UX. Redemption will work normally with the corrected amounts.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* LP Token notice removed; using raw balances */}
 
         {/* Protection Settings */}
         <div className="space-y-4">
@@ -343,7 +318,7 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
               </span>
             </div>
           </div>
-          <Badge variant="secondary">BSC Testnet</Badge>
+          <Badge variant="secondary">BSC Mainnet</Badge>
         </div>
 
         {/* Action Button */}
@@ -355,12 +330,8 @@ export function LiquidityRedemptionCard({ onRedemptionComplete }: LiquidityRedem
             !lpAmount ||
             parseFloat(lpAmount) <= 0 ||
             (() => {
-              // Convert user input (corrected) back to raw amount for validation
               const userInputAmount = parseEther(lpAmount);
-              const correctedLPTokens = correctedStats?.totalLPTokens || 0n;
-              const rawAmount = correctedLPTokens > 0n && balances.lp > 0n
-                ? (userInputAmount * balances.lp) / correctedLPTokens
-                : userInputAmount;
+              const rawAmount = userInputAmount;
               return rawAmount > balances.lp;
             })() ||
             loading ||

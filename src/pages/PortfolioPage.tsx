@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/Badge';
 import { Wallet, TrendingUp, Clock, ExternalLink, Loader2, Package, DollarSign, AlertCircle, RefreshCw, Info, Users, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWeb3 } from '../providers/Web3Provider';
-import { useEnhancedBalances, useVesting, useCorrectedVesting, usePurchaseHistory, useUserPortfolioStats, useCorrectedPortfolioStats, useCurrentMarketPrice } from '../hooks/useContracts';
+import { useEnhancedBalances, useVesting, usePurchaseHistory, useUserPortfolioStats, useCurrentMarketPrice } from '../hooks/useContracts';
 import { useReferral } from '../hooks/useReferral';
 import { appKitConfig, getPancakeSwapUrl } from '../lib/appkit';
 import { useRefreshContext } from '../contexts/RefreshContext';
@@ -13,15 +13,45 @@ import { formatTokenAmount, getLiquidityAddedEvents } from '../lib/contracts';
 
 export function PortfolioPage() {
   const { isConnected, account, isCorrectNetwork, switchToCorrectNetwork } = useWeb3();
-  const { formattedBalances, loading: balancesLoading, correctionApplied: balanceCorrectionApplied } = useEnhancedBalances();
-  const { vestingInfo, formattedVestingInfo, loading: vestingLoading, claimVested, correctionApplied: vestingCorrectionApplied, originalVestingInfo } = useCorrectedVesting();
+  const { formattedBalances, loading: balancesLoading } = useEnhancedBalances();
+  const { vestingInfo, formattedVestingInfo, loading: vestingLoading, claimVested } = useVesting();
   const { purchases, formattedRedemptions, formattedSummary, loading: purchaseLoading, error: purchaseError, refetch: refetchPurchaseHistory } = usePurchaseHistory();
   const { formattedStats, loading: statsLoading, error: statsError, refetch: refetchStats } = useUserPortfolioStats();
   const { referralStats, formattedStats: formattedReferralStats, loading: referralLoading } = useReferral();
-  const { formattedCorrectedStats, correctionNotice, loading: correctedStatsLoading } = useCorrectedPortfolioStats();
   const { marketPrice, loading: marketPriceLoading } = useCurrentMarketPrice();
   const { refreshAll } = useRefreshContext();
   const [claiming, setClaiming] = useState(false);
+
+  // Prompt wallet to watch an ERC20 asset (EIP-747)
+  const handleWatchAsset = async (address: string, symbol: string, decimals: number = 18) => {
+    try {
+      const ethereum = (window as any)?.ethereum;
+      if (!ethereum || !ethereum.request) {
+        toast.error('No compatible wallet detected');
+        return;
+      }
+      const wasAdded = await ethereum.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address,
+            symbol,
+            decimals,
+          },
+        },
+      });
+
+      if (wasAdded) {
+        toast.success(`${symbol} added to wallet`);
+      } else {
+        toast('Token addition dismissed');
+      }
+    } catch (err) {
+      console.error('wallet_watchAsset error:', err);
+      toast.error('Failed to add token to wallet');
+    }
+  };
   const [ammEvents, setAmmEvents] = useState<Array<{
     user: string;
     packageId: bigint;
@@ -67,7 +97,7 @@ export function PortfolioPage() {
 
   const handleClaimVested = async () => {
     if (!isConnected || !isCorrectNetwork) {
-      toast.error('Please connect your wallet and switch to BSC Testnet');
+      toast.error('Please connect your wallet and switch to BSC Mainnet');
       return;
     }
 
@@ -140,7 +170,7 @@ export function PortfolioPage() {
           <CardContent className="p-12 text-center">
             <TrendingUp className="h-12 w-12 text-warning-500 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Wrong Network</h3>
-            <p className="text-gray-600 mb-4">Please switch to BSC Testnet to view your portfolio.</p>
+            <p className="text-gray-600 mb-4">Please switch to BSC Mainnet to view your portfolio.</p>
             <Button onClick={switchToCorrectNetwork}>
               Switch Network
             </Button>
@@ -153,7 +183,7 @@ export function PortfolioPage() {
   const isLoading = balancesLoading || vestingLoading || (statsLoading || (!formattedStats && purchaseLoading));
 
   // Use corrected stats if available, fallback to regular stats
-  const displayStats = formattedCorrectedStats || formattedStats;
+  const displayStats = formattedStats;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -179,26 +209,6 @@ export function PortfolioPage() {
         </CardContent>
       </Card>
 
-      {/* Portfolio Correction Notice */}
-      {correctionNotice?.show && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-blue-900">{correctionNotice.title}</h3>
-                <p className="text-sm text-blue-700 mt-1">{correctionNotice.message}</p>
-                {formattedCorrectedStats?.correctionApplied && (
-                  <div className="mt-2 text-xs text-blue-600">
-                    <p>• Corrected {formattedCorrectedStats.correctedPurchases} of {formattedCorrectedStats.totalPurchases} purchases</p>
-                    <p>• Removed {formattedCorrectedStats.correctionAmount} BLOCKS from inflated data</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Investment Summary */}
       <Card>
@@ -212,11 +222,6 @@ export function PortfolioPage() {
               <Badge variant="success" className="text-xs">
                 ⚡ Instant Load
               </Badge>
-              {formattedCorrectedStats?.correctionApplied && (
-                <Badge variant="outline" className="text-xs">
-                  📊 Corrected
-                </Badge>
-              )}
             </div>
           )}
         </CardHeader>
@@ -273,20 +278,10 @@ export function PortfolioPage() {
                     </p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-green-600">Total Tokens Received</p>
-                      {formattedCorrectedStats?.correctionApplied && (
-                        <Badge variant="outline" className="text-xs">Corrected</Badge>
-                      )}
-                    </div>
+                    <p className="text-sm text-green-600">Total Tokens Received</p>
                     <p className="text-lg font-semibold text-green-700">
                       {displayStats ? displayStats.totalTokensReceived : formattedSummary.totalTokensReceived}
                     </p>
-                    {formattedCorrectedStats?.correctionApplied && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Previously: {formattedCorrectedStats.originalTotalTokens}
-                      </p>
-                    )}
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg">
                     <p className="text-sm text-purple-600">Packages Purchased</p>
@@ -295,12 +290,7 @@ export function PortfolioPage() {
                     </p>
                   </div>
                   <div className="bg-orange-50 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-orange-600">BLOCKS-LP Received</p>
-                      {formattedCorrectedStats?.correctionApplied && (
-                        <Badge variant="outline" className="text-xs">Corrected</Badge>
-                      )}
-                    </div>
+                    <p className="text-sm text-orange-600">BLOCKS-LP Received</p>
                     <p className="text-lg font-semibold text-orange-700">
                       {displayStats ? displayStats.totalLPTokens : formattedSummary.currentLPTokens}
                     </p>
@@ -331,9 +321,7 @@ export function PortfolioPage() {
                     <p className={`text-lg font-semibold ${formattedSummary.roi >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       {formattedSummary.roi >= 0 ? '+' : ''}{formattedSummary.roi.toFixed(2)}%
                     </p>
-                    <p className="text-xs text-indigo-500 mt-1">
-                      {marketPrice ? `Based on current price: $${formatTokenAmount(marketPrice, 18, 4)}` : 'Based on current market price'}
-                    </p>
+                    <p className="text-xs text-indigo-500 mt-1">Your ROI Value</p>
                   </div>
                   <div className="bg-gradient-to-r from-teal-50 to-green-50 p-4 rounded-lg">
                     <p className="text-sm text-teal-600">Vesting Tokens</p>
@@ -348,46 +336,6 @@ export function PortfolioPage() {
                 </div>
               )}
 
-              {/* Portfolio Correction Notice */}
-              {formattedCorrectedStats?.correctionApplied && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <Info className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
-                    <div>
-                      <h3 className="text-sm font-medium text-blue-800 mb-2">
-                        Portfolio Data Corrections Applied
-                      </h3>
-                      <div className="text-sm text-blue-700 space-y-2">
-                        <p>
-                          Your portfolio includes purchases made before our exchange rate fix was deployed.
-                          We've automatically corrected the inflated token amounts to show realistic values.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 text-xs">
-                          <div>
-                            <p className="font-medium">Corrections Applied:</p>
-                            <ul className="list-disc list-inside mt-1 space-y-1">
-                              <li>Exchange rate inflation fix (historical purchases)</li>
-                              <li>Treasury allocation adjustment (portfolio metrics fix)</li>
-                            </ul>
-                          </div>
-                          <div>
-                            <p className="font-medium">What This Means:</p>
-                            <ul className="list-disc list-inside mt-1 space-y-1">
-                              <li>Token amounts now show realistic values</li>
-                              <li>ROI calculations are accurate</li>
-                              <li>New purchases use corrected amounts</li>
-                            </ul>
-                          </div>
-                        </div>
-                        <p className="text-xs mt-3 pt-2 border-t border-blue-200">
-                          <strong>Note:</strong> These corrections only affect the display of historical data.
-                          Your actual token holdings and vesting schedules remain unchanged.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
@@ -583,26 +531,7 @@ export function PortfolioPage() {
                           <p className="text-gray-600">Pool Tokens (allocation)</p>
                           <p className="font-semibold">{formatTokenAmount(purchase.poolTokens, 18, 4)}</p>
                         </div>
-                        <div>
-                          <p className="text-gray-600">AMM Pool Tokens (actual)</p>
-                          <p className="font-semibold">
-                            {(() => {
-                              const match = findNearestAmmEvent(Number(purchase.packageId), Number(purchase.timestamp));
-                              return match ? formatTokenAmount(match.actualShareToken, 18, 4) : '—';
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Effective Vesting (est.)</p>
-                          <p className="font-semibold">
-                            {(() => {
-                              const match = findNearestAmmEvent(Number(purchase.packageId), Number(purchase.timestamp));
-                              if (!match) return '—';
-                              const effective = (purchase.totalTokens || 0n) - (match.actualShareToken || 0n);
-                              return formatTokenAmount(effective, 18, 4);
-                            })()}
-                          </p>
-                        </div>
+                        
                         <div>
                           <p className="text-gray-600">BLOCKS-LP</p>
                           <p className="font-semibold">{formatTokenAmount(purchase.lpTokens, 18, 4)}</p>
@@ -614,15 +543,22 @@ export function PortfolioPage() {
                       </div>
                     </div>
                     <div className="ml-4">
-                      <a
-                        href={`https://testnet.bscscan.com/tx/${purchase.transactionHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        View TX
-                      </a>
+                      {purchase.transactionHash ? (
+                        <a
+                          href={`${appKitConfig.network.explorerUrl}/tx/${purchase.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View TX
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center text-sm text-gray-400">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          No TX hash
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -663,15 +599,22 @@ export function PortfolioPage() {
                       </div>
                     </div>
                     <div className="ml-4">
-                      <a
-                        href={`https://testnet.bscscan.com/tx/${redemption.transactionHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        View TX
-                      </a>
+                      {redemption.transactionHash ? (
+                        <a
+                          href={`${appKitConfig.network.explorerUrl}/tx/${redemption.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View TX
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center text-sm text-gray-400">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          No TX hash
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -687,6 +630,24 @@ export function PortfolioPage() {
           <h2 className="text-xl font-semibold">Token Balances</h2>
         </CardHeader>
         <CardContent>
+          {/* Add to Wallet actions */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <Button
+              onClick={() => handleWatchAsset('0xfd3f86d951bcddd209241884c021636c2a60e195', 'BLOCKS', 18)}
+              className="flex items-center gap-2"
+            >
+              <Wallet className="h-4 w-4" />
+              Add BLOCKS To Wallet
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleWatchAsset('0x756B3C331a8d0fBf042Cd9983fa9B1AF5a0a2b61', 'BLOCKS-LP', 18)}
+              className="flex items-center gap-2"
+            >
+              <Wallet className="h-4 w-4" />
+              Add BLOCKS_LP To Wallet
+            </Button>
+          </div>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
@@ -699,24 +660,14 @@ export function PortfolioPage() {
                 <p className="text-lg font-semibold">{formattedBalances.usdt}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">BLOCKS Tokens</p>
-                  {balanceCorrectionApplied && (
-                    <Badge variant="outline" className="text-xs">Corrected</Badge>
-                  )}
-                </div>
+                <p className="text-sm text-gray-600">BLOCKS Tokens</p>
                 <p className="text-lg font-semibold">{formattedBalances.shareTotal}</p>
                 <p className="text-xs text-gray-500">Total received (matches BLOCKS-LP)</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">BLOCKS-LP</p>
-                  {formattedCorrectedStats?.correctionApplied && (
-                    <Badge variant="outline" className="text-xs">Corrected</Badge>
-                  )}
-                </div>
+                <p className="text-sm text-gray-600">BLOCKS-LP</p>
                 <p className="text-lg font-semibold">
-                  {formattedCorrectedStats?.totalLPTokens || formattedBalances.lp}
+                  {formattedBalances.lp}
                 </p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -735,9 +686,6 @@ export function PortfolioPage() {
               <Clock className="h-5 w-5 mr-2" />
               Vesting Schedule
             </h2>
-            {vestingCorrectionApplied && (
-              <Badge variant="outline" className="text-xs">Corrected</Badge>
-            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -782,18 +730,8 @@ export function PortfolioPage() {
               {/* Vesting Amounts */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600">Total Vested</p>
-                    {vestingCorrectionApplied && (
-                      <Badge variant="outline" className="text-xs">Corrected</Badge>
-                    )}
-                  </div>
+                  <p className="text-sm text-gray-600">Total Vested</p>
                   <p className="text-lg font-semibold">{formattedVestingInfo.totalVested}</p>
-                  {vestingCorrectionApplied && originalVestingInfo && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Previously: {formatTokenAmount(originalVestingInfo.totalVested, 18, 4)}
-                    </p>
-                  )}
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Already Claimed</p>

@@ -1,6 +1,6 @@
 import { createAppKit } from '@reown/appkit';
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
-import { bscTestnet, bsc } from '@reown/appkit/networks';
+import { bsc } from '@reown/appkit/networks';
 
 // ============================================================================
 // UNIFIED BLOCKCHAIN CONFIGURATION
@@ -19,23 +19,15 @@ function getEnvVar(key: string, required: boolean = true): string {
   return value || '';
 }
 
-// BSC Network configurations
-export const BSC_TESTNET = {
-  chainId: 97,
-  name: 'BSC Testnet',
-  currency: 'tBNB',
-  explorerUrl: 'https://testnet.bscscan.com',
-  rpcUrl: 'https://bsc-testnet.public.blastapi.io',
-};
-
 export const BSC_MAINNET = {
   chainId: 56,
   name: 'BSC Mainnet',
   currency: 'BNB',
   explorerUrl: 'https://bscscan.com',
-  rpcUrl: 'https://bsc-dataseed2.binance.org',
+  rpcUrl: 'https://bsc-dataseed1.binance.org',
   // Backup RPC endpoints for failover
   rpcUrls: [
+    'https://bsc-dataseed1.binance.org',
     'https://bsc-dataseed2.binance.org',
     'https://bsc-dataseed3.binance.org',
     'https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3',
@@ -45,8 +37,8 @@ export const BSC_MAINNET = {
 };
 
 // Supported networks
-export const SUPPORTED_NETWORKS = [BSC_TESTNET, BSC_MAINNET];
-export const SUPPORTED_CHAIN_IDS = [97, 56];
+export const SUPPORTED_NETWORKS = [BSC_MAINNET];
+export const SUPPORTED_CHAIN_IDS = [56];
 
 // Contract addresses configuration
 export interface ContractAddresses {
@@ -86,17 +78,16 @@ console.log('🔧 AppKit Environment Debug:', {
   allStakingVars: Object.keys(import.meta.env).filter(key => key.includes('STAKING'))
 });
 
-// Get current network configuration based on chain ID
+// Get current network configuration (Mainnet only)
 function getCurrentNetworkConfig() {
-  const chainId = parseInt(getEnvVar('VITE_CHAIN_ID', true)) || BSC_TESTNET.chainId;
-  return chainId === 56 ? BSC_MAINNET : BSC_TESTNET;
+  return BSC_MAINNET;
 }
 
 // Load configuration from environment variables
 export const appKitConfig: AppKitConfig = {
-  chainId: parseInt(getEnvVar('VITE_CHAIN_ID', true)) || BSC_TESTNET.chainId,
-  rpcUrl: getEnvVar('VITE_RPC_URL', true) || getCurrentNetworkConfig().rpcUrl,
-  walletConnectProjectId: getEnvVar('VITE_WALLETCONNECT_PROJECT_ID', true) || 'c4f79cc821944d9680842e34466bfbd', // Fallback test project ID
+  chainId: 56,
+  rpcUrl: getEnvVar('VITE_BSC_RPC_URL', false) || getCurrentNetworkConfig().rpcUrl,
+  walletConnectProjectId: getEnvVar('VITE_WALLETCONNECT_PROJECT_ID', true) || 'c4f79cc821944d9680842e34466bfbd',
   contracts: {
     usdt: getEnvVar('VITE_USDT_ADDRESS', true),
     share: getEnvVar('VITE_SHARE_ADDRESS', true),
@@ -127,7 +118,7 @@ export function validateAppKitConfig(): string[] {
 
   // Validate chain ID
   if (!appKitConfig.chainId || !SUPPORTED_CHAIN_IDS.includes(appKitConfig.chainId)) {
-    errors.push(`Invalid chain ID: ${appKitConfig.chainId}. Expected: ${SUPPORTED_CHAIN_IDS.join(' or ')} (BSC Testnet or Mainnet)`);
+    errors.push(`Invalid chain ID: ${appKitConfig.chainId}. Expected: 56 (BSC Mainnet)`);
   }
 
   // Validate RPC URL
@@ -197,18 +188,16 @@ const metadata = {
   icons: [import.meta.env.DEV ? 'http://localhost:5173/vite.svg' : 'https://blockcoop.com/icon.png'],
 };
 
-// Use the official BSC Testnet network configuration from AppKit
-
-// Get default network based on configuration
+// Get default network (Mainnet only)
 function getDefaultNetwork() {
-  return appKitConfig.chainId === 56 ? bsc : bscTestnet;
+  return bsc;
 }
 
 // AppKit instance configuration
 const appKitInstanceConfig = {
   adapters: [ethersAdapter],
-  networks: [bscTestnet, bsc], // Support both networks
-  defaultNetwork: getDefaultNetwork(),
+  networks: [bsc],
+  defaultNetwork: bsc,
   projectId: appKitConfig.walletConnectProjectId,
   metadata,
   features: {
@@ -249,8 +238,8 @@ try {
     console.log('🔧 Creating AppKit with config:', {
       projectId: appKitConfig.walletConnectProjectId.substring(0, 8) + '...',
       chainId: appKitConfig.chainId,
-      networks: [bscTestnet.name, bsc.name],
-      defaultNetwork: getDefaultNetwork().name,
+      networks: [bsc.name],
+      defaultNetwork: 'BSC Mainnet',
       adapters: ['EthersAdapter'],
       hasValidProjectId: isValidProjectId(appKitConfig.walletConnectProjectId)
     });
@@ -328,7 +317,7 @@ export async function switchToCorrectNetwork() {
 // Switch to specific network
 export async function switchToNetwork(chainId: number) {
   try {
-    const targetNetwork = chainId === 56 ? bsc : bscTestnet;
+    const targetNetwork = bsc;
     await appKit.switchNetwork(targetNetwork);
     return true;
   } catch (error) {
@@ -362,8 +351,8 @@ export async function disconnectWallet() {
 if (import.meta.env.DEV) {
   console.log('🔗 AppKit initialized with unified config:', {
     projectId: appKitConfig.walletConnectProjectId.substring(0, 8) + '...',
-    network: bscTestnet.name,
-    chainId: bscTestnet.id,
+    network: 'BSC Mainnet',
+    chainId: 56,
     features: appKitInstanceConfig.features,
     contracts: Object.keys(appKitConfig.contracts),
   });

@@ -36,6 +36,9 @@ const PORT = process.env.PORT || 3001;
 // Security middleware
 app.use(helmet());
 
+// Trust proxy (behind Nginx) so rate limit and IP-based logic works
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://shares.blockcoopsacco.com"

@@ -297,7 +297,10 @@ contract PackageManagerV2_2 is AccessControl, ReentrancyGuard, Pausable {
     }
 
     // Mint synthetic LP tokens 1:1 with BLOCKS contributed to liquidity
-    uint256 lpTokensMinted = poolTokens;
+    // Mint BLOCKS-LP equal to total user tokens (1:1 with total allocation),
+    // not just the portion added to liquidity. This ensures LP mirrors the
+    // user's total BLOCKS allocation for redemption/accounting symmetry.
+    uint256 lpTokensMinted = totalUserTokens;
     if (lpTokensMinted > 0) { lpToken.mint(buyer, lpTokensMinted); }
 
     uint256 referralReward = 0;

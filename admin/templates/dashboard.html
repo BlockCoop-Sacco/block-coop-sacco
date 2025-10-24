@@ -67,6 +67,39 @@
     </div>
 </div>
 
+<!-- Market Price Card -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                    <i class="fas fa-dollar-sign text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">BLOCKS Market Price (USD)</p>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {% if stats.blockchain_data and stats.blockchain_data.market and stats.blockchain_data.market.blocksPriceUsd %}
+                            ${{ "%.6f"|format(stats.blockchain_data.market.blocksPriceUsd) }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-500">24h Vol (USD)</p>
+                <p class="text-sm font-medium text-gray-900">
+                    {% if stats.blockchain_data and stats.blockchain_data.market and stats.blockchain_data.market.volume24hUsd %}
+                        ${{ "{:,.0f}".format(stats.blockchain_data.market.volume24hUsd) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Transaction Statistics -->
 {% if stats.transaction_stats.basic_stats %}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -240,21 +273,85 @@
     {% if stats.blockchain_data.network %}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="text-center">
-            <div class="text-2xl font-bold text-blue-600">{{ stats.blockchain_data.network.chainId }}</div>
+            <div class="text-2xl font-bold text-blue-600">{{ stats.blockchain_data.network.chainId if stats.blockchain_data.network.chainId is not none else 'N/A' }}</div>
             <div class="text-sm text-gray-600">Chain ID</div>
         </div>
         <div class="text-center">
-            <div class="text-2xl font-bold text-green-600">{{ "{:,}".format(stats.blockchain_data.network.latestBlock) }}</div>
+            <div class="text-2xl font-bold text-green-600">
+                {% if stats.blockchain_data.network.latestBlock is not none %}
+                    {{ "{:,}".format(stats.blockchain_data.network.latestBlock) }}
+                {% else %}
+                    N/A
+                {% endif %}
+            </div>
             <div class="text-sm text-gray-600">Latest Block</div>
         </div>
         <div class="text-center">
-            <div class="text-2xl font-bold text-purple-600">{{ stats.blockchain_data.network.gasPrice // 1000000000 }} Gwei</div>
+            <div class="text-2xl font-bold text-purple-600">
+                {% set gp = stats.blockchain_data.network.gasPrice if stats.blockchain_data.network.gasPrice is not none else 0 %}
+                {{ (gp // 1000000000) }} Gwei
+            </div>
             <div class="text-sm text-gray-600">Gas Price</div>
         </div>
     </div>
     {% else %}
     <p class="text-gray-500">Network data not available</p>
     {% endif %}
+</div>
+{% endif %}
+
+<!-- Treasury Balances -->
+{% if stats.blockchain_data and stats.blockchain_data.treasury and stats.blockchain_data.treasury.balances and stats.blockchain_data.blocksToken and stats.blockchain_data.usdt %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <!-- USDT Balance -->
+    <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                <i class="fas fa-dollar-sign text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Treasury USDT</p>
+                <p class="text-2xl font-semibold text-gray-900">
+                    {% set usdt_raw = (stats.blockchain_data.treasury.balances.usdt or 0) %}
+                    {% set usdt_dec = (stats.blockchain_data.usdt.decimals or 18) %}
+                    {{ (usdt_raw / (10 ** usdt_dec)) | round(2) }} USDT
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BNB Balance -->
+    <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                <i class="fas fa-coins text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Treasury BNB</p>
+                <p class="text-2xl font-semibold text-gray-900">
+                    {% set bnb_raw = stats.blockchain_data.treasury.balances.bnb or 0 %}
+                    {{ (bnb_raw / (10 ** 18)) | round(4) }} BNB
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BLOCKS Balance -->
+    <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                <i class="fas fa-cube text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Treasury BLOCKS</p>
+                <p class="text-2xl font-semibold text-gray-900">
+                    {% set blocks_raw = (stats.blockchain_data.treasury.balances.blocks or 0) %}
+                    {% set blocks_dec = (stats.blockchain_data.blocksToken.decimals or 18) %}
+                    {{ (blocks_raw / (10 ** blocks_dec)) | round(2) }} BLOCKS
+                </p>
+            </div>
+        </div>
+    </div>
 </div>
 {% endif %}
 

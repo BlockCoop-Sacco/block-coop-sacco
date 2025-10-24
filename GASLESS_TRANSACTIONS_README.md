@@ -35,9 +35,6 @@ User (Frontend) → Signs Message → Backend Relayer → Blockchain
 ### 1. Deploy Smart Contracts
 
 ```bash
-# Deploy to BSC Testnet first
-npx hardhat run scripts/deploy-gasless.js --network bsctestnet
-
 # Deploy to BSC Mainnet
 npx hardhat run scripts/deploy-gasless.js --network bscmainnet
 ```

@@ -588,6 +588,587 @@
           ]
         }
       }
+    },
+    "4c61325470c6bd4a5a04584a06ae6095290987b8126d5e54a62827cc0f7b1472": {
+      "address": "0x7b37FB33E94A78f473E7639ACd89AE822aEf9aFc",
+      "txHash": "0xd50523d518962f6f63392319107798391cd26471f0c2b01e431c4cfaeac3e723",
+      "layout": {
+        "solcVersion": "0.8.20",
+        "storage": [
+          {
+            "label": "usdt",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IERC20DecimalsUpgradeable)8677",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:33"
+          },
+          {
+            "label": "shareToken",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_contract(IBLOCKSUpgradeable)8685",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:34"
+          },
+          {
+            "label": "lpToken",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_contract(IBLOCKS_LPUpgradeable)8705",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:35"
+          },
+          {
+            "label": "vestingVault",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_contract(IVestingVaultUpgradeable)8722",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:36"
+          },
+          {
+            "label": "router",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_contract(IPancakeRouterUpgradeable)8780",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:37"
+          },
+          {
+            "label": "factory",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_contract(IPancakeFactoryUpgradeable)8790",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:38"
+          },
+          {
+            "label": "taxManager",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_contract(ISwapTaxManagerUpgradeable)8825",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:39"
+          },
+          {
+            "label": "treasury",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_address",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:40"
+          },
+          {
+            "label": "deadlineWindow",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_uint256",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:41"
+          },
+          {
+            "label": "globalTargetPrice",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_uint256",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:42"
+          },
+          {
+            "label": "slippageTolerance",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_uint256",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:43"
+          },
+          {
+            "label": "liquidityBps",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_uint16",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:44"
+          },
+          {
+            "label": "USDT_DEC",
+            "offset": 2,
+            "slot": "11",
+            "type": "t_uint8",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:46"
+          },
+          {
+            "label": "USDT_SCALE",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_uint256",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:47"
+          },
+          {
+            "label": "USDT_SCALE_UP",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_bool",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:48"
+          },
+          {
+            "label": "nextPackageId",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_uint256",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:50"
+          },
+          {
+            "label": "_packageIds",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_array(t_uint256)dyn_storage",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:51"
+          },
+          {
+            "label": "_packages",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_mapping(t_uint256,t_struct(Package)8868_storage)",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:52"
+          },
+          {
+            "label": "_userStats",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_address,t_struct(UserStats)8953_storage)",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:56"
+          },
+          {
+            "label": "_userPurchases",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_address,t_array(t_struct(UserPurchase)8934_storage)dyn_storage)",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:57"
+          },
+          {
+            "label": "_userRedemptions",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:58"
+          },
+          {
+            "label": "_userRedemptionTimestamps",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+            "contract": "PackageManagerUpgradeable",
+            "src": "contracts/PackageManagerUpgradeable.sol:59"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)26_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AccessControlStorage)36_storage": {
+            "label": "struct AccessControlUpgradeable.AccessControlStorage",
+            "members": [
+              {
+                "label": "_roles",
+                "type": "t_mapping(t_bytes32,t_struct(RoleData)26_storage)",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(InitializableStorage)147_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)235_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReentrancyGuardStorage)299_storage": {
+            "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
+            "members": [
+              {
+                "label": "_status",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(RoleData)26_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "hasRole",
+                "type": "t_mapping(t_address,t_bool)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_array(t_struct(UserPurchase)8934_storage)dyn_storage": {
+            "label": "struct PackageManagerUpgradeable.UserPurchase[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IBLOCKSUpgradeable)8685": {
+            "label": "contract IBLOCKSUpgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IBLOCKS_LPUpgradeable)8705": {
+            "label": "contract IBLOCKS_LPUpgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IERC20DecimalsUpgradeable)8677": {
+            "label": "contract IERC20DecimalsUpgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPancakeFactoryUpgradeable)8790": {
+            "label": "contract IPancakeFactoryUpgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPancakeRouterUpgradeable)8780": {
+            "label": "contract IPancakeRouterUpgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(ISwapTaxManagerUpgradeable)8825": {
+            "label": "contract ISwapTaxManagerUpgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IVestingVaultUpgradeable)8722": {
+            "label": "contract IVestingVaultUpgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_array(t_struct(UserPurchase)8934_storage)dyn_storage)": {
+            "label": "mapping(address => struct PackageManagerUpgradeable.UserPurchase[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+            "label": "mapping(address => uint256[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(UserStats)8953_storage)": {
+            "label": "mapping(address => struct PackageManagerUpgradeable.UserStats)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Package)8868_storage)": {
+            "label": "mapping(uint256 => struct PackageManagerUpgradeable.Package)",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Package)8868_storage": {
+            "label": "struct PackageManagerUpgradeable.Package",
+            "members": [
+              {
+                "label": "entryUSDT",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "exchangeRate",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "cliff",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "duration",
+                "type": "t_uint64",
+                "offset": 8,
+                "slot": "2"
+              },
+              {
+                "label": "vestBps",
+                "type": "t_uint16",
+                "offset": 16,
+                "slot": "2"
+              },
+              {
+                "label": "referralBps",
+                "type": "t_uint16",
+                "offset": 18,
+                "slot": "2"
+              },
+              {
+                "label": "active",
+                "type": "t_bool",
+                "offset": 20,
+                "slot": "2"
+              },
+              {
+                "label": "exists",
+                "type": "t_bool",
+                "offset": 21,
+                "slot": "2"
+              },
+              {
+                "label": "name",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(UserPurchase)8934_storage": {
+            "label": "struct PackageManagerUpgradeable.UserPurchase",
+            "members": [
+              {
+                "label": "packageId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "usdtAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalTokens",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "vestTokens",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "poolTokens",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "lpTokens",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "referrer",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "6"
+              },
+              {
+                "label": "referralReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "7"
+              },
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "8"
+              }
+            ],
+            "numberOfBytes": "288"
+          },
+          "t_struct(UserStats)8953_storage": {
+            "label": "struct PackageManagerUpgradeable.UserStats",
+            "members": [
+              {
+                "label": "totalInvested",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "totalTokensReceived",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalVestTokens",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "totalPoolTokens",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "totalLPTokens",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "totalReferralRewards",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "purchaseCount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "6"
+              },
+              {
+                "label": "redemptionCount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "7"
+              },
+              {
+                "label": "totalRedemptions",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "8"
+              }
+            ],
+            "numberOfBytes": "288"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.ReentrancyGuard": [
+            {
+              "contract": "ReentrancyGuardUpgradeable",
+              "label": "_status",
+              "type": "t_uint256",
+              "src": "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol:43",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.AccessControl": [
+            {
+              "contract": "AccessControlUpgradeable",
+              "label": "_roles",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)26_storage)",
+              "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:62",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
     }
   }
 }

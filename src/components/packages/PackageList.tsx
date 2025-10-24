@@ -6,6 +6,8 @@ import { PurchaseModal } from './PurchaseModal';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { NetworkGuard } from '../ui/NetworkStatus';
 import { Loader2, Package2, AlertTriangle, TrendingUp, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useCurrentMarketPrice } from '../../hooks/useContracts';
 import { validateAppKitConfig } from '../../lib/appkit';
 import toast from 'react-hot-toast';
 
@@ -15,6 +17,7 @@ export function PackageList() {
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
+  const { marketPrice } = useCurrentMarketPrice();
 
   useEffect(() => {
     // Check configuration before attempting to load packages
@@ -213,15 +216,40 @@ export function PackageList() {
         </Card>
 
         {/* Packages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {packages.map((pkg) => (
-            <PackageCard
-              key={pkg.id}
-              package={pkg}
-              onPurchase={handlePurchase}
-            />
-          ))}
-        </div>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } }}
+       >
+          {(() => {
+            // Determine featured package by highest ROI based on current market price
+            let featuredId: number | null = null;
+            if (marketPrice) {
+              const marketNum = Number(marketPrice) / 1e18;
+              let bestRoi = -Infinity;
+              for (const p of packages) {
+                const exNum = Number(p.exchangeRate) / 1e18;
+                if (exNum > 0) {
+                  const roi = ((marketNum - exNum) / exNum) * 100;
+                  if (roi > bestRoi) {
+                    bestRoi = roi;
+                    featuredId = p.id;
+                  }
+                }
+              }
+            }
+            return packages.map((pkg) => (
+              <motion.div key={pkg.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+                <PackageCard
+                  package={pkg}
+                  onPurchase={handlePurchase}
+                  featured={featuredId === pkg.id}
+                />
+              </motion.div>
+            ));
+          })()}
+        </motion.div>
       </div>
 
       {selectedPackage && (
